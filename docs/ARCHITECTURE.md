@@ -18,16 +18,23 @@ This document describes the technical stack and the structural design of the Spe
 
 ```text
 .
-├── alembic/            # Database migration history and environment
-├── docs/               # Documentation (you are here)
+├── [[alembic/]]              # Database migration history and env.py setup
+│   └── versions/         # Individual migration scripts (v1, v2...)
+├── docs/                 # Project documentation and architectural RFCs
 ├── src/
-│   ├── api/            # Route handlers (FastAPI Endpoints)
-│   ├── core/           # Configuration, Security, and Global constants
-│   ├── models/         # SQLModel database definitions
-│   ├── repositories/   # Data access layer (Direct DB queries)
-│   ├── schemas/        # Pydantic-only models for API data exchange
-│   ├── services/       # Business logic (e.g., Calendar Projection Engine)
-│   └── database.py     # Database engine and session setup
-├── alembic.ini         # Alembic configuration
-├── docker-compose.yaml # Local infrastructure setup
-└── pyproject.toml      # Project dependencies (Poetry)
+│   ├── api/              # Route handlers (FastAPI Endpoints)
+│   │   └── v1/           # Versioned API routes (auth, calendar, etc.)
+│   ├── [[core/]]             # Global engine: Config, Security, and Constants
+│   ├── models/           # SQLModel database definitions (User, Account)
+│   ├── repositories/     # Data access layer (Direct DB queries)
+│   ├── schemas/          # Pydantic models for request/response validation
+│   ├── services/         # Business logic (e.g., Projection Engine)
+│   ├── [[database.py]]       # Async engine and session local setup
+│   └── [[main.py]]           # API entry point and lifespan management
+├── alembic.ini           # Alembic configuration file
+├── docker-compose.yaml   # Local infrastructure (App + Postgres)
+├── [[Dockerfile]]            # Multi-stage production-ready build
+├── pyproject.toml        # Poetry dependencies and metadata
+└── .env                  # Local secrets
+
+```

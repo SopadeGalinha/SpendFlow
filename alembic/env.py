@@ -1,23 +1,26 @@
-import os
 from logging.config import fileConfig
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import engine_from_config, pool  # type: ignore
 from alembic import context
-from sqlmodel import SQLModel  # Import SQLModel
-from src.models.user import User
-from src.models.finance import Account, RecurringRule
+from sqlmodel import SQLModel  # type: ignore
 
+from src.core.config import settings
+from src.models.user import User  # noqa: F401
+from src.models.finance import Account, RecurringRule  # noqa: F401
 
 config = context.config
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# To work locally and inside Docker/k3s
-database_url = os.getenv("DATABASE_URL")
+# Set the database URL from the centralized settings
+# We replace asyncpg with psycopg2 because Alembic is synchronous
+database_url = settings.DATABASE_URL
 if database_url:
-    config.set_main_option("sqlalchemy.url", database_url.replace("asyncpg", "psycopg2"))
+    sync_url = database_url.replace("asyncpg", "psycopg2")
+    config.set_main_option("sqlalchemy.url", sync_url)
 
 # Define target_metadata for autogenerate
+# This allows Alembic to "see" the models
 target_metadata = SQLModel.metadata
 
 
@@ -45,8 +48,8 @@ def run_migrations_online() -> None:
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, 
-            target_metadata=target_metadata
+            connection=connection,
+            target_metadata=target_metadata,
         )
 
         with context.begin_transaction():

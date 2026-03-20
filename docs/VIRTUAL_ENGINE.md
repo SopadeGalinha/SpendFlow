@@ -19,3 +19,5 @@ Financial transactions often cannot happen on weekends. We implemented three adj
 4. If it's a weekend, it applies the rule's `weekend_adjustment`.
 5. Returns a JSON list of "Virtual Transactions".
 
+### 🚀 Performance Note
+Projections are currently calculated in-memory for the requested range. For ranges larger than 24 months, we recommend implementing a cache layer or pagination to maintain the "Fast" in FastAPI.

@@ -729,6 +729,9 @@ files = [
     {file = "passlib-1.7.4.tar.gz", hash = "sha256:defd50f72b65c5402ab2c573830a6978e5f202ad0d984793c8dde2c4152ebe04"},
 ]
 
+[package.dependencies]
+bcrypt = {version = ">=3.1.0", optional = true, markers = "extra == \"bcrypt\""}
+
 [package.extras]
 argon2 = ["argon2-cffi (>=18.2.0)"]
 bcrypt = ["bcrypt (>=3.1.0)"]
@@ -992,6 +995,30 @@ files = [
 
 [package.dependencies]
 typing-extensions = ">=4.14.1"
+
+[[package]]
+name = "pydantic-settings"
+version = "2.13.1"
+description = "Settings management using Pydantic"
+optional = false
+python-versions = ">=3.10"
+groups = ["main"]
+files = [
+    {file = "pydantic_settings-2.13.1-py3-none-any.whl", hash = "sha256:d56fd801823dbeae7f0975e1f8c8e25c258eb75d278ea7abb5d9cebb01b56237"},
+    {file = "pydantic_settings-2.13.1.tar.gz", hash = "sha256:b4c11847b15237fb0171e1462bf540e294affb9b86db4d9aa5c01730bdbe4025"},
+]
+
+[package.dependencies]
+pydantic = ">=2.7.0"
+python-dotenv = ">=0.21.0"
+typing-inspection = ">=0.4.0"
+
+[package.extras]
+aws-secrets-manager = ["boto3 (>=1.35.0)", "boto3-stubs[secretsmanager]"]
+azure-key-vault = ["azure-identity (>=1.16.0)", "azure-keyvault-secrets (>=4.8.0)"]
+gcp-secret-manager = ["google-cloud-secret-manager (>=2.23.1)"]
+toml = ["tomli (>=2.0.1)"]
+yaml = ["pyyaml (>=6.0.1)"]
 
 [[package]]
 name = "python-dateutil"
@@ -1606,4 +1633,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13"
-content-hash = "3b9f0a270686359d2a968a15456e72b48dffdf4c938a8bfe904348aa4439ba8e"
+content-hash = "70cc4173181513af02b85457ad925299df4e085d514dd644dc0bec90194eb968"
