@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: spendflow_db
+    restart: always
+    environment:
+      POSTGRES_USER: user_admin
+      POSTGRES_PASSWORD: password_123
+      POSTGRES_DB: spendflow_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - spendflow_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user_admin -d spendflow_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    container_name: spendflow_app
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    environment:
+      DATABASE_URL: postgresql+asyncpg://user_admin:password_123@db:5432/spendflow_db
+      CORS_ORIGINS: "http://localhost:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  spendflow_postgres_data:
