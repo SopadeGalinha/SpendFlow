@@ -4,15 +4,15 @@ services:
     container_name: spendflow_db
     restart: always
     environment:
-      POSTGRES_USER: user_admin
-      POSTGRES_PASSWORD: password_123
-      POSTGRES_DB: spendflow_db
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
     volumes:
       - spendflow_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user_admin -d spendflow_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -23,11 +23,10 @@ services:
     restart: always
     ports:
       - "8000:8000"
-    volumes:
-      - .:/app
     environment:
-      DATABASE_URL: postgresql+asyncpg://user_admin:password_123@db:5432/spendflow_db
+      DATABASE_URL: ${DATABASE_URL}
       CORS_ORIGINS: "http://localhost:3000"
+      SECRET_KEY: ${SECRET_KEY}
     depends_on:
       db:
         condition: service_healthy

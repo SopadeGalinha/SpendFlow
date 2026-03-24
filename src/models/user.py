@@ -12,7 +12,7 @@ from sqlmodel import (  # type: ignore
 )
 
 if TYPE_CHECKING:
-    from .finance import Account
+    from .account import Account
 
 
 class WeekendAdjustment(str, Enum):
@@ -70,20 +70,22 @@ class User(SQLModel, table=True):
         default=WeekendAdjustment.KEEP,
         description="Default rule for weekend date shifting",
     )
-
-    # Timestamps handled by SQLAlchemy for precision
     created_at: datetime = Field(
         sa_column=Column(
-            DateTime(timezone=True), server_default=func.now(), nullable=False
-        )
+            DateTime(timezone=True),
+            nullable=False,
+            server_default=func.now()
+        ),
+        description="Timestamp when the user was created",
     )
     updated_at: datetime = Field(
         sa_column=Column(
             DateTime(timezone=True),
-            server_default=func.now(),
-            onupdate=func.now(),
             nullable=False,
-        )
+            server_default=func.now(),
+            onupdate=func.now()
+        ),
+        description="Timestamp when the user was last updated",
     )
 
     # Relationships

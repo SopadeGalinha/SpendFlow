@@ -4,8 +4,7 @@ from alembic import context
 from sqlmodel import SQLModel  # type: ignore
 
 from src.core.config import settings
-from src.models.user import User  # noqa: F401
-from src.models.finance import Account, RecurringRule  # noqa: F401
+from src.models import User, Account, RecurringRule  # noqa: F401
 
 config = context.config
 

@@ -4,7 +4,8 @@ from .user import (
     TransactionType,
     Frequency,
 )
-from .finance import Account, RecurringRule
+from .account import Account
+from .calendar import RecurringRule
 
 __all__ = [
     "User",

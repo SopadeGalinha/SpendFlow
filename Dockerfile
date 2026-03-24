@@ -28,15 +28,22 @@ RUN apt-get update && apt-get install -y \
 COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
-COPY ./src ./src
+RUN groupadd -r appgroup && useradd -r -g appgroup appuser
 
+COPY ./src ./src
 COPY ./alembic ./alembic
 COPY ./alembic.ini ./alembic.ini
-COPY .env .env
+
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+RUN chown -R appuser:appgroup /app
 
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 
 EXPOSE 8000
 
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
+USER appuser
+
+ENTRYPOINT ["/entrypoint.sh"]

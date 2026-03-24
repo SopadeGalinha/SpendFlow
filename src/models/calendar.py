@@ -1,33 +1,19 @@
 from datetime import date
-from typing import Optional, List
+from decimal import Decimal
+from typing import Optional
 from uuid import UUID, uuid4
-from sqlmodel import SQLModel, Field, Relationship  # type: ignore
-from .user import User, TransactionType, WeekendAdjustment, Frequency
+from sqlmodel import (
+    Column,
+    Numeric,
+    SQLModel,
+    Field,
+    Relationship,
+)
 
-
-class Account(SQLModel, table=True):
-    """
-    Represents a financial container (Bank, Wallet, Savings).
-    Belongs to a specific User.
-    """
-
-    id: UUID = Field(default_factory=uuid4, primary_key=True)
-    name: str = Field(
-        nullable=False,
-        description="Account name, e.g., 'Main Checking'",
-    )
-    balance: float = Field(
-        default=0.0,
-        description="Current real-time balance",
-    )
-
-    user_id: UUID = Field(foreign_key="user.id", index=True)
-
-    # Relationships
-    user: User = Relationship(back_populates="accounts")
-    recurring_rules: List["RecurringRule"] = Relationship(
-        back_populates="account",
-    )
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from src.models import Account
+from src.models import Frequency, TransactionType, WeekendAdjustment
 
 
 class RecurringRule(SQLModel, table=True):
@@ -38,7 +24,7 @@ class RecurringRule(SQLModel, table=True):
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     description: str = Field(nullable=False)
-    amount: float = Field(nullable=False)
+    amount: Decimal = Field(sa_column=Column(Numeric(12, 2), nullable=False))
     type: TransactionType = Field(nullable=False)
     frequency: Frequency = Field(default=Frequency.MONTHLY)
 
@@ -55,4 +41,7 @@ class RecurringRule(SQLModel, table=True):
     account_id: UUID = Field(foreign_key="account.id", index=True)
 
     # Relationships
-    account: Account = Relationship(back_populates="recurring_rules")
+    account: "Account" = Relationship(back_populates="recurring_rules")
+
+
+__all__ = ["RecurringRule"]

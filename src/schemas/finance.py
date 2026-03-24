@@ -1,14 +1,16 @@
+from decimal import Decimal
+
 from pydantic import BaseModel  # type: ignore
 from datetime import date
 from uuid import UUID
 # from typing import List
-from src.models.user import TransactionType
+from src.models import TransactionType
 
 
 class ProjectionResponse(BaseModel):
     id: str
     description: str
-    amount: float
+    amount: Decimal
     type: TransactionType
     original_date: date
     date: date
@@ -17,3 +19,6 @@ class ProjectionResponse(BaseModel):
 
     class Config:
         from_attributes = True
+        json_encoders = {
+            Decimal: lambda v: str(v)
+        }
