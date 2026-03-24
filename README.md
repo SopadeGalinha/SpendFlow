@@ -9,7 +9,7 @@ SpendFlow is a modern, secure, and extensible financial management API designed 
 
 ## System Architecture
 
-```mermaid
+```markdown
 graph TD
     A[Frontend (Web/App)] -- REST/JSON --> B[SpendFlow API (FastAPI)]
     B -- SQLAlchemy/SQLModel --> C[(Database)]
