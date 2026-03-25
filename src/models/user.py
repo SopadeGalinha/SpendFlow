@@ -45,6 +45,9 @@ class User(SQLModel, table=True):
     Includes SaaS-ready fields like timezone and currency.
     """
 
+    # Relationships
+    accounts: List["Account"] = Relationship(back_populates="user")
+
     id: UUID = Field(
         default_factory=uuid4,
         primary_key=True,
@@ -72,9 +75,7 @@ class User(SQLModel, table=True):
     )
     created_at: datetime = Field(
         sa_column=Column(
-            DateTime(timezone=True),
-            nullable=False,
-            server_default=func.now()
+            DateTime(timezone=True), nullable=False, server_default=func.now()
         ),
         description="Timestamp when the user was created",
     )
@@ -83,7 +84,7 @@ class User(SQLModel, table=True):
             DateTime(timezone=True),
             nullable=False,
             server_default=func.now(),
-            onupdate=func.now()
+            onupdate=func.now(),
         ),
         description="Timestamp when the user was last updated",
     )

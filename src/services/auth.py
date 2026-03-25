@@ -24,6 +24,13 @@ class AuthService:
 
     @staticmethod
     async def create_user(db: AsyncSession, user_data: UserCreate) -> User:
+        if not user_data.password or len(user_data.password) > 70:
+            from fastapi import HTTPException, status
+
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password cannot be empty or longer than 70 characters",
+            )
         hashed_password = get_password_hash(user_data.password)
         user = User(
             username=user_data.username,

@@ -1,3 +1,4 @@
+
 from .finance import ProjectionResponse
 from .user import (
     UserBase,
@@ -5,6 +6,7 @@ from .user import (
     UserResponse,
     Token,
 )
+from .account import AccountCreate, AccountUpdate, AccountResponse
 
 
 __all__ = [
@@ -13,4 +15,7 @@ __all__ = [
     "UserCreate",
     "UserResponse",
     "Token",
+    "AccountCreate",
+    "AccountUpdate",
+    "AccountResponse",
 ]

@@ -15,6 +15,17 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str
 
+    @classmethod
+    def __get_validators__(cls):
+        yield from super().__get_validators__()
+        yield cls.validate_password_length
+
+    @staticmethod
+    def validate_password_length(value):
+        if len(value) > 72:
+            raise ValueError("Password cannot be longer than 72 characters.")
+        return value
+
 
 class UserResponse(UserBase):
     id: UUID

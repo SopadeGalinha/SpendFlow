@@ -13,6 +13,7 @@ from sqlmodel import (
 
 if TYPE_CHECKING:
     from .calendar import RecurringRule
+    from .user import User
 
 
 class Account(SQLModel, table=True):
@@ -44,10 +45,11 @@ class Account(SQLModel, table=True):
         description="If set, the account is considered deleted",
     )
 
-    # Relationships
+    user: "User" = Relationship(back_populates="accounts")
     recurring_rules: List["RecurringRule"] = Relationship(
         back_populates="account",
     )
+    user: "User" = Relationship(back_populates="accounts")
 
 
 __all__ = ["Account"]
