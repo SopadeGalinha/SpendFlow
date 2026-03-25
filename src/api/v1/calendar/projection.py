@@ -65,4 +65,3 @@ async def get_calendar_projection(
     )
 
     return projections
-
