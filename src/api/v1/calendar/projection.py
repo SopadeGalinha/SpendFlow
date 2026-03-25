@@ -1,16 +1,17 @@
+import calendar as py_calendar
+from datetime import date
+from typing import List
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
-from datetime import date
-import calendar as py_calendar
-from typing import List
-from uuid import UUID
 
 from src.api.v1.deps import get_current_user
 from src.database import get_session
 from src.models import RecurringRule, User
-from src.services.calendar import CalendarService
 from src.schemas.finance import ProjectionResponse
+from src.services.calendar import CalendarService
 
 router = APIRouter()
 
@@ -43,9 +44,10 @@ async def get_calendar_projection(
     account = account_result.scalar_one_or_none()
     if not account or account.user_id != current_user.id:
         from fastapi import HTTPException
+
         raise HTTPException(
             status_code=403,
-            detail="Account does not belong to the current user."
+            detail="Account does not belong to the current user.",
         )
 
     # Fetch recurring rules for the account from the database, only non-deleted

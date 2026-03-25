@@ -1,5 +1,6 @@
 from fastapi import FastAPI
-from src.api.v1 import calendar, accounts, auth
+
+from src.api.v1 import accounts, auth, calendar
 
 
 def include_routers(app: FastAPI):

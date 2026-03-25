@@ -1,14 +1,17 @@
-
 import logging
+from datetime import datetime, timezone
+from decimal import Decimal
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
-from src.database import get_session
-from src.services import AccountService
-from src.api.v1.deps import get_current_user
-from src.models import User, Account
-from src.schemas import AccountCreate, AccountUpdate, AccountResponse
 
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import Response
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.api.v1.deps import get_current_user
+from src.database import get_session
+from src.models import Account, User
+from src.schemas import AccountCreate, AccountResponse, AccountUpdate
+from src.services import AccountService
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -52,7 +55,7 @@ async def create_account(
     db: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    from decimal import Decimal
+    """Create a new account."""
     account = Account(
         name=account_in.name,
         balance=(
@@ -103,6 +106,7 @@ async def delete_account(
     db: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
+    """Soft delete an account."""
     account = await db.get(Account, account_id)
     if (
         not account
@@ -110,11 +114,10 @@ async def delete_account(
         or account.deleted_at is not None
     ):
         raise HTTPException(status_code=404, detail="Account not found")
-    from datetime import datetime, timezone
     account.deleted_at = datetime.now(timezone.utc)
     db.add(account)
     await db.commit()
-    return
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # Restore a soft-deleted account
@@ -124,6 +127,7 @@ async def restore_account(
     db: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
+    """Restore a soft-deleted account."""
     account = await db.get(Account, account_id)
     if (
         not account
@@ -135,9 +139,8 @@ async def restore_account(
         )
         raise HTTPException(
             status_code=403,
-            detail="Account not found, not owned by user, or not deleted."
+            detail="Account not found, not owned by user, or not deleted.",
         )
-    from src.services import AccountService
     success = await AccountService.restore_account(db, account_id)
     if not success:
         logger.warning(

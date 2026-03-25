@@ -1,16 +1,21 @@
+import logging
 from datetime import timedelta
 from uuid import UUID
+
+from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models import User
-from src.schemas import UserCreate
-from src.repositories import UserRepository
+from src.core.config import settings
 from src.core.security import (
     create_access_token,
-    verify_password,
     get_password_hash,
+    verify_password,
 )
-from src.core.config import settings
+from src.models import User
+from src.repositories import UserRepository
+from src.schemas import UserCreate
+
+logger = logging.getLogger(__name__)
 
 
 class AuthService:
@@ -19,19 +24,28 @@ class AuthService:
         return await UserRepository.get_by_email(db, email)
 
     @staticmethod
+    async def get_user_by_username(
+        db: AsyncSession, username: str
+    ) -> User | None:
+        return await UserRepository.get_by_username(db, username)
+
+    @staticmethod
     async def get_user_by_id(db: AsyncSession, user_id: UUID) -> User | None:
         return await UserRepository.get_by_id(db, user_id)
 
     @staticmethod
     async def create_user(db: AsyncSession, user_data: UserCreate) -> User:
-        if not user_data.password or len(user_data.password) > 70:
-            from fastapi import HTTPException, status
-
+        passwd = user_data.password
+        if not passwd or len(passwd) > 72:
+            logger.warning(
+                "User registration failed: invalid password",
+                extra={"email": user_data.email},
+            )
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Password cannot be empty or longer than 70 characters",
+                detail="Password must be between 8 and 72 characters",
             )
-        hashed_password = get_password_hash(user_data.password)
+        hashed_password = get_password_hash(passwd)
         user = User(
             username=user_data.username,
             email=user_data.email,
@@ -41,7 +55,15 @@ class AuthService:
             currency=user_data.currency,
             default_weekend_adjustment=user_data.default_weekend_adjustment,
         )
-        return await UserRepository.create(db, user)
+        created_user = await UserRepository.create(db, user)
+        logger.info(
+            "User registered successfully",
+            extra={
+                "user_id": str(created_user.id),
+                "email": created_user.email,
+            },
+        )
+        return created_user
 
     @staticmethod
     async def authenticate_user(
@@ -49,9 +71,21 @@ class AuthService:
     ) -> User | None:
         user = await UserRepository.get_by_email(db, email)
         if not user:
+            logger.warning(
+                "Login failed: user not found",
+                extra={"email": email},
+            )
             return None
         if not verify_password(password, user.hashed_password):
+            logger.warning(
+                "Login failed: incorrect password",
+                extra={"email": email},
+            )
             return None
+        logger.info(
+            "User authenticated successfully",
+            extra={"user_id": str(user.id), "email": email},
+        )
         return user
 
     @staticmethod

@@ -1,22 +1,17 @@
 from datetime import datetime, timedelta, timezone
-from typing import Any, Union
+from typing import Any
+
+import bcrypt
 from jose import jwt  # type: ignore
-from passlib.context import CryptContext  # type: ignore
+
 from src.core.config import settings
 
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-ALGORITHM = "HS256"
-
-
 def create_access_token(
-    subject: Union[str, Any], expires_delta: timedelta = None
+    subject: str | Any, expires_delta: timedelta | None = None
 ) -> str:
-    """
-    Gera um token JWT assinado.
-    O 'subject' geralmente é o ID ou o email do usuário.
-    """
+    """Generate a signed JWT token.
+    The 'subject' is typically the user ID or email."""
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
@@ -28,16 +23,25 @@ def create_access_token(
     encoded_jwt = jwt.encode(
         to_encode,
         settings.SECRET_KEY,
-        algorithm=ALGORITHM,
+        algorithm=settings.ALGORITHM,
     )
     return encoded_jwt
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Compara uma senha em texto plano com o hash do banco."""
-    return pwd_context.verify(plain_password, hashed_password)
+    """Compare a plaintext password against the database hash."""
+    try:
+        return bcrypt.checkpw(
+            plain_password.encode("utf-8"),
+            hashed_password.encode("utf-8"),
+        )
+    except ValueError:
+        return False
 
 
 def get_password_hash(password: str) -> str:
-    """Gera um hash Bcrypt seguro a partir de uma senha."""
-    return pwd_context.hash(password)
+    """Generate a secure Bcrypt hash from a password."""
+    return bcrypt.hashpw(
+        password.encode("utf-8"),
+        bcrypt.gensalt(),
+    ).decode("utf-8")

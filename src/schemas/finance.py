@@ -1,9 +1,9 @@
-from decimal import Decimal
-
-from pydantic import BaseModel  # type: ignore
 from datetime import date
+from decimal import Decimal
 from uuid import UUID
-# from typing import List
+
+from pydantic import BaseModel, field_serializer
+
 from src.models import TransactionType
 
 
@@ -17,8 +17,8 @@ class ProjectionResponse(BaseModel):
     is_virtual: bool
     rule_id: UUID
 
-    class Config:
-        from_attributes = True
-        json_encoders = {
-            Decimal: lambda v: str(v)
-        }
+    model_config = {"from_attributes": True}
+
+    @field_serializer("amount")
+    def serialize_amount(self, value: Decimal) -> str:
+        return str(value)

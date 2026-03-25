@@ -1,5 +1,6 @@
 import sys
-from pythonjsonlogger import jsonlogger
+
+from pythonjsonlogger.json import JsonFormatter
 
 JSON_FORMAT = "%(asctime)s %(levelname)s %(name)s %(message)s"
 
@@ -12,12 +13,16 @@ def get_json_formatter():
     Sensitive data should never be logged.
     Always sanitize log messages before logging.
     """
-    class SafeJsonFormatter(jsonlogger.JsonFormatter):
+
+    class SafeJsonFormatter(JsonFormatter):
         def add_fields(self, log_record, record, message_dict):
             super().add_fields(log_record, record, message_dict)
             # Remove or mask sensitive fields if present
             for sensitive_key in [
-                "password", "token", "secret", "hashed_password"
+                "password",
+                "token",
+                "secret",
+                "hashed_password",
             ]:
                 if sensitive_key in log_record:
                     log_record[sensitive_key] = "***REDACTED***"

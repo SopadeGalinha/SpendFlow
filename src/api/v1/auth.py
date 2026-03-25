@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import get_session
-from src.schemas import UserCreate, UserResponse, Token
+from src.schemas import Token, UserCreate, UserResponse
 from src.services import AuthService
 
 router = APIRouter()
@@ -19,17 +19,22 @@ async def register(
     db: AsyncSession = Depends(get_session),
 ):
     """Register a new user."""
-    if len(user_data.password) > 72:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Password cannot be longer than 72 characters.",
-        )
-    existing_user = await AuthService.get_user_by_email(db, user_data.email)
-    if existing_user:
+    existing_email = await AuthService.get_user_by_email(db, user_data.email)
+    if existing_email:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered.",
         )
+
+    existing_username = await AuthService.get_user_by_username(
+        db, user_data.username
+    )
+    if existing_username:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username already registered.",
+        )
+
     user = await AuthService.create_user(db, user_data)
     return user
 

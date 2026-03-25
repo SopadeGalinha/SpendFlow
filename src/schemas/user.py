@@ -1,6 +1,7 @@
-from pydantic import BaseModel, EmailStr
-from uuid import UUID
 from datetime import datetime
+from uuid import UUID
+
+from pydantic import BaseModel, EmailStr, field_validator
 
 
 class UserBase(BaseModel):
@@ -15,15 +16,13 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str
 
+    @field_validator("password")
     @classmethod
-    def __get_validators__(cls):
-        yield from super().__get_validators__()
-        yield cls.validate_password_length
-
-    @staticmethod
-    def validate_password_length(value):
+    def validate_password_length(cls, value: str) -> str:
         if len(value) > 72:
             raise ValueError("Password cannot be longer than 72 characters.")
+        if len(value) < 8:
+            raise ValueError("Password must be at least 8 characters long.")
         return value
 
 
@@ -32,8 +31,7 @@ class UserResponse(UserBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 class Token(BaseModel):

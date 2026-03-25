@@ -1,25 +1,26 @@
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 from uuid import UUID, uuid4
+
 from sqlmodel import (
     Column,
-    Numeric,
-    SQLModel,
+    DateTime,
     Field,
+    Numeric,
     Relationship,
+    SQLModel,
 )
 
-from typing import TYPE_CHECKING
+from src.models.enums import Frequency, TransactionType, WeekendAdjustment
+
 if TYPE_CHECKING:
-    from src.models import Account
-from src.models import Frequency, TransactionType, WeekendAdjustment
+    from src.models.account import Account
 
 
 class RecurringRule(SQLModel, table=True):
-    """
-    The 'Virtual Template'. This does NOT store actual transactions.
-    It provides the logic for the Calendar Service to project future cash flow.
+    """Virtual template for recurring transactions.
+    Provides logic for projecting future cash flow.
     """
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
@@ -28,19 +29,22 @@ class RecurringRule(SQLModel, table=True):
     type: TransactionType = Field(nullable=False)
     frequency: Frequency = Field(default=Frequency.MONTHLY)
 
-    # Dates are 'date' objects (YYYY-MM-DD) as they represent calendar days
     start_date: date = Field(nullable=False)
     end_date: Optional[date] = Field(default=None)
 
-    # Specific rule for this transaction (overrides User default)
     weekend_adjustment: WeekendAdjustment = Field(
         default=WeekendAdjustment.KEEP,
-        description="Specific adjustment for this rule",
+        description="Adjustment rule for weekend dates",
     )
 
     account_id: UUID = Field(foreign_key="account.id", index=True)
 
-    # Relationships
+    deleted_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True),
+        description="Soft delete timestamp",
+    )
+
     account: "Account" = Relationship(back_populates="recurring_rules")
 
 

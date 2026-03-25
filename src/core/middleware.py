@@ -1,8 +1,10 @@
+import logging
+import time
+from collections import defaultdict
+
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
-import time
-from collections import defaultdict
 
 REQUESTS_RATE_LIMIT = 100  # requests
 REQUESTS_RATE_PERIOD = 60  # seconds
@@ -10,14 +12,22 @@ _rate_limit_store = defaultdict(list)
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
+    """In-memory rate limiting for single-instance deployments.
+
+    Use a shared backend such as Redis for distributed deployments.
+    """
+
     async def dispatch(self, request: Request, call_next):
         ip = request.client.host
         now = time.time()
-        window = [t for t in _rate_limit_store[ip]
-                  if now - t < REQUESTS_RATE_PERIOD]
+        window = [
+            t for t in _rate_limit_store[ip] if now - t < REQUESTS_RATE_PERIOD
+        ]
         window.append(now)
         _rate_limit_store[ip] = window
         if len(window) > REQUESTS_RATE_LIMIT:
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Rate limit exceeded for IP: {ip}")
             return Response("Too Many Requests", status_code=429)
         response = await call_next(request)
         return response

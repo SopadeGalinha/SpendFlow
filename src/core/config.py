@@ -1,5 +1,6 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict  # type: ignore
 import os
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -9,11 +10,14 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     CORS_ORIGINS: str
+    DEBUG: bool = False
 
     if os.getenv("ENV", "development") == "production":
         model_config = SettingsConfigDict(extra="ignore")
+        DEBUG = False
     else:
         model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+        DEBUG = True
 
 
 settings = Settings()

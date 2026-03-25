@@ -1,14 +1,16 @@
 from typing import AsyncGenerator
+
 from sqlalchemy.ext.asyncio import (
-    create_async_engine,
     AsyncSession,
     async_sessionmaker,
+    create_async_engine,
 )
+
 from src.core.config import settings
 
 engine = create_async_engine(
     settings.DATABASE_URL,
-    echo=True,
+    echo=settings.DEBUG if hasattr(settings, "DEBUG") else False,
     future=True,
 )
 

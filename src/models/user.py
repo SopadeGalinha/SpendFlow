@@ -1,52 +1,26 @@
 from datetime import datetime
-from typing import Optional, List, TYPE_CHECKING
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
-from enum import Enum
-from sqlmodel import (  # type: ignore
-    SQLModel,
-    Field,
-    Relationship,
+
+from sqlmodel import (
     Column,
     DateTime,
+    Field,
+    Relationship,
+    SQLModel,
     func,
 )
 
+from src.models.enums import WeekendAdjustment
+
 if TYPE_CHECKING:
-    from .account import Account
-
-
-class WeekendAdjustment(str, Enum):
-    """Defines how to handle transactions falling on weekends."""
-
-    KEEP = "keep"  # Keep on the same date
-    FOLLOWING = "following"  # Move to the next Monday
-    PRECEDING = "preceding"  # Move to the previous Friday
-
-
-class TransactionType(str, Enum):
-    """Standard financial transaction types."""
-
-    INCOME = "income"
-    EXPENSE = "expense"
-
-
-class Frequency(str, Enum):
-    """Recurrence frequency for virtual projections."""
-
-    DAILY = "daily"
-    WEEKLY = "weekly"
-    MONTHLY = "monthly"
-    YEARLY = "yearly"
+    from src.models.account import Account
 
 
 class User(SQLModel, table=True):
+    """Core User model for SpendFlow.
+    Includes SaaS-ready fields for regional settings.
     """
-    Core User model for SpendFlow.
-    Includes SaaS-ready fields like timezone and currency.
-    """
-
-    # Relationships
-    accounts: List["Account"] = Relationship(back_populates="user")
 
     id: UUID = Field(
         default_factory=uuid4,
@@ -58,8 +32,7 @@ class User(SQLModel, table=True):
     email: str = Field(index=True, unique=True, nullable=False)
     hashed_password: str = Field(nullable=False)
 
-    # SaaS & Regional Settings
-    city: Optional[str] = Field(default=None)
+    city: str | None = Field(default=None)
     timezone: str = Field(
         default="UTC",
         description="User's local timezone (e.g., Europe/Lisbon)",
@@ -89,5 +62,4 @@ class User(SQLModel, table=True):
         description="Timestamp when the user was last updated",
     )
 
-    # Relationships
-    accounts: List["Account"] = Relationship(back_populates="user")
+    accounts: list["Account"] = Relationship(back_populates="user")

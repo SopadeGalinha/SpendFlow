@@ -1,25 +1,28 @@
-from pydantic import BaseModel
-from uuid import UUID
 from decimal import Decimal
 from typing import Optional
+from uuid import UUID
+
+from pydantic import BaseModel, Field, field_serializer
 
 
 class AccountBase(BaseModel):
-    name: str
+    name: str = Field(min_length=1, max_length=255)
 
 
 class AccountCreate(AccountBase):
-    balance: Optional[Decimal] = None
+    balance: Optional[Decimal] = Field(None, ge=0)
 
 
 class AccountUpdate(AccountBase):
-    balance: Optional[Decimal] = None
+    balance: Optional[Decimal] = Field(None, ge=0)
 
 
 class AccountResponse(AccountBase):
     id: UUID
     balance: Decimal
 
-    class Config:
-        from_attributes = True
-        json_encoders = {Decimal: str}
+    model_config = {"from_attributes": True}
+
+    @field_serializer("balance")
+    def serialize_balance(self, value: Decimal) -> str:
+        return str(value)

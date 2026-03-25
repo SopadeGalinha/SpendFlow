@@ -2,16 +2,18 @@ import asyncio
 
 # from uuid import UUID
 from datetime import date
-from sqlmodel import select  # type: ignore
+
 from sqlalchemy.ext.asyncio import AsyncSession  # type: ignore
+from sqlmodel import select  # type: ignore
+
 from src.database import engine
 from src.models import (
-    User,
-    TransactionType,
-    Frequency,
-    WeekendAdjustment,
     Account,
+    Frequency,
     RecurringRule,
+    TransactionType,
+    User,
+    WeekendAdjustment,
 )
 
 
@@ -45,7 +47,7 @@ async def seed_data():
         account = result.scalars().first()
 
         if not account:
-            from decimal import Decimal, ROUND_HALF_UP
+            from decimal import ROUND_HALF_UP, Decimal
 
             account = Account(
                 name="Main Bank",
@@ -61,7 +63,7 @@ async def seed_data():
             print(f"✅ Account created: {account.id}")
 
         # 3. Create Recurring Rules (Test Scenarios)
-        from decimal import Decimal, ROUND_HALF_UP
+        from decimal import ROUND_HALF_UP, Decimal
 
         rules = [
             RecurringRule(

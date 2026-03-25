@@ -1,18 +1,20 @@
 import logging.config
-from fastapi import FastAPI, Depends, HTTPException
+
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.core.logging_config import LOGGING_CONFIG
+
+from src.api.router import include_routers
+from src.core.cors import add_cors_middleware
 from src.core.exceptions import (
     global_exception_handler,
     http_exception_handler,
     validation_exception_handler,
 )
-from src.core.middleware import RateLimitMiddleware, SecurityHeadersMiddleware
 from src.core.lifespan import lifespan
-from src.core.cors import add_cors_middleware
-from src.api.router import include_routers
+from src.core.logging_config import LOGGING_CONFIG
+from src.core.middleware import RateLimitMiddleware, SecurityHeadersMiddleware
 from src.database import get_session
 
 logging.config.dictConfig(LOGGING_CONFIG)
@@ -34,7 +36,6 @@ async def health_check(session: AsyncSession = Depends(get_session)):
         await session.execute(text("SELECT 1"))
         return {"status": "healthy", "database": "connected"}
     except Exception as e:
-        logger = logging.getLogger("src.main")
         logger.error("Health check failed", extra={"error": str(e)})
         raise HTTPException(status_code=503, detail="Database unavailable")
 
