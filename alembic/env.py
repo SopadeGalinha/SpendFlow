@@ -1,10 +1,18 @@
 from logging.config import fileConfig
+
 from sqlalchemy import engine_from_config, pool  # type: ignore
-from alembic import context
 from sqlmodel import SQLModel  # type: ignore
 
+from alembic import context
 from src.core.config import settings
-from src.models import User, Account, RecurringRule  # noqa: F401
+from src.models import (  # noqa: F401
+    Account,
+    Category,
+    CategoryGroup,
+    RecurringRule,
+    Transaction,
+    User,
+)
 
 config = context.config
 

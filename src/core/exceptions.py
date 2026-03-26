@@ -7,6 +7,16 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 
+SENSITIVE_ERROR_FIELDS = {
+    "password",
+    "hashed_password",
+    "token",
+    "secret",
+    "access_token",
+    "refresh_token",
+}
+
+
 class DecimalEncoder(json.JSONEncoder):
     """Custom JSON encoder that handles Decimal values."""
 
@@ -81,11 +91,20 @@ async def validation_exception_handler(
     logger = logging.getLogger("src.core.exceptions")
 
     # Convert validation errors that may contain Decimal or exception values.
+    def is_sensitive_error(error_dict: dict) -> bool:
+        loc = error_dict.get("loc", [])
+        return any(
+            isinstance(part, str) and part in SENSITIVE_ERROR_FIELDS
+            for part in loc
+        )
+
     def convert_errors(errors):
         """Recursively convert non-JSON-serializable values in error list."""
         result = []
         for error in errors:
             error_dict = dict(error)
+            if is_sensitive_error(error_dict) and "input" in error_dict:
+                error_dict["input"] = "***REDACTED***"
             # Convert nested context values into JSON-safe primitives.
             if "ctx" in error_dict and error_dict["ctx"]:
                 error_dict["ctx"] = {

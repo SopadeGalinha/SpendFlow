@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from src.api.v1 import accounts, auth, calendar
+from src.api.v1 import accounts, auth, calendar, categories, transactions
 
 
 def include_routers(app: FastAPI):
@@ -18,6 +18,16 @@ def include_routers(app: FastAPI):
         auth,
         prefix="/api/v1/auth",
         tags=["Authentication"],
+    )
+    app.include_router(
+        categories,
+        prefix="/api/v1/categories",
+        tags=["Categories"],
+    )
+    app.include_router(
+        transactions,
+        prefix="/api/v1/transactions",
+        tags=["Transactions"],
     )
 
 

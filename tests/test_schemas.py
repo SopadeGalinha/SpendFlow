@@ -10,6 +10,7 @@ from pydantic import ValidationError
 from src.models.enums import TransactionType
 from src.schemas.account import AccountCreate, AccountUpdate
 from src.schemas.finance import ProjectionResponse
+from src.schemas.recurring import RecurringRuleCreate, RecurringRuleUpdate
 from src.schemas.user import UserCreate
 
 
@@ -193,3 +194,34 @@ class TestProjectionResponseSchema:
         json_data = projection.model_dump_json()
         assert "virtual_proj_456" in json_data
         assert "800.00" in json_data or "800" in json_data
+
+
+class TestRecurringRuleSchema:
+    """Test recurring-rule schema validation."""
+
+    def test_valid_recurring_rule_defaults_interval(self):
+        rule = RecurringRuleCreate(
+            description="Gym",
+            amount=Decimal("25.00"),
+            type="expense",
+            frequency="daily",
+            start_date=datetime.now().date(),
+            account_id=uuid4(),
+        )
+        assert rule.interval == 1
+
+    def test_recurring_rule_invalid_interval(self):
+        with pytest.raises(ValidationError):
+            RecurringRuleCreate(
+                description="Gym",
+                amount=Decimal("25.00"),
+                type="expense",
+                frequency="daily",
+                interval=0,
+                start_date=datetime.now().date(),
+                account_id=uuid4(),
+            )
+
+    def test_recurring_rule_update_invalid_interval(self):
+        with pytest.raises(ValidationError):
+            RecurringRuleUpdate(interval=0)

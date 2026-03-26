@@ -12,6 +12,23 @@ class UserBase(BaseModel):
     currency: str = "EUR"
     default_weekend_adjustment: str = "keep"
 
+    @field_validator("username", mode="before")
+    @classmethod
+    def normalize_username(cls, value: str) -> str:
+        if not isinstance(value, str):
+            return value
+        normalized_value = value.strip().lower()
+        if not normalized_value:
+            raise ValueError("Username cannot be empty.")
+        return normalized_value
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        if not isinstance(value, str):
+            return value
+        return value.strip().lower()
+
 
 class UserCreate(UserBase):
     password: str

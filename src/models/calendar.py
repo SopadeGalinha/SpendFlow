@@ -28,6 +28,7 @@ class RecurringRule(SQLModel, table=True):
     amount: Decimal = Field(sa_column=Column(Numeric(12, 2), nullable=False))
     type: TransactionType = Field(nullable=False)
     frequency: Frequency = Field(default=Frequency.MONTHLY)
+    interval: int = Field(default=1, nullable=False)
 
     start_date: date = Field(nullable=False)
     end_date: Optional[date] = Field(default=None)

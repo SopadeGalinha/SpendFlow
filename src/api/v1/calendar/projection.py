@@ -63,7 +63,10 @@ async def get_calendar_projection(
 
     # 4. Chama o serviço de projeção (o cérebro do app)
     projections = CalendarService.get_projection(
-        rules=rules, start_period=start_date, end_period=end_date
+        rules=rules,
+        start_period=start_date,
+        end_period=end_date,
+        current_balance=account.balance,
     )
 
     return projections

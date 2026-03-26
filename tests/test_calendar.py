@@ -88,6 +88,8 @@ def test_get_projection_with_monthly_rule(
     assert data[0]["description"] == "Monthly salary"
     assert data[0]["amount"] == "2000.00"
     assert data[0]["type"] == "income"
+    assert data[0]["balance_delta"] == "2000.00"
+    assert data[0]["projected_balance"] == "3000.00"
 
 
 def test_get_projection_invalid_month(client, test_user):
@@ -249,3 +251,9 @@ def test_get_projection_multiple_rules(
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
     assert len(data) == 2
+    assert data[0]["description"] == "Monthly salary"
+    assert data[0]["projected_balance"] == "3000.00"
+    assert data[1]["description"] == "Monthly rent"
+    assert data[1]["amount"] == "800.00"
+    assert data[1]["balance_delta"] == "-800.00"
+    assert data[1]["projected_balance"] == "2200.00"

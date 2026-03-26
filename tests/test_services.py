@@ -101,6 +101,60 @@ class TestCalendarService:
 
         assert len(projections) >= 4
         assert all(p.type == TransactionType.EXPENSE for p in projections)
+        assert all(p.amount == Decimal("50.00") for p in projections)
+        assert all(p.balance_delta == Decimal("-50.00") for p in projections)
+
+    def test_get_projection_every_fifteen_days(self):
+        """Daily frequency with interval should support every N days."""
+        rule = RecurringRule(
+            id=uuid4(),
+            description="Gym",
+            amount=Decimal("25.00"),
+            type=TransactionType.EXPENSE,
+            frequency=Frequency.DAILY,
+            interval=15,
+            start_date=date(2026, 3, 1),
+            account_id=uuid4(),
+        )
+
+        projections = CalendarService.get_projection(
+            [rule],
+            date(2026, 3, 1),
+            date(2026, 3, 31),
+            current_balance=Decimal("100.00"),
+        )
+
+        assert [p.original_date for p in projections] == [
+            date(2026, 3, 1),
+            date(2026, 3, 16),
+            date(2026, 3, 31),
+        ]
+        assert projections[-1].projected_balance == Decimal("25.00")
+
+    def test_get_projection_normalizes_legacy_negative_expense_amount(self):
+        """Negative legacy expense amounts should be normalized."""
+        rule = RecurringRule(
+            id=uuid4(),
+            description="Legacy rent",
+            amount=Decimal("-800.00"),
+            type=TransactionType.EXPENSE,
+            frequency=Frequency.MONTHLY,
+            interval=1,
+            start_date=date(2026, 3, 5),
+            account_id=uuid4(),
+        )
+
+        projections = CalendarService.get_projection(
+            [rule],
+            date(2026, 3, 1),
+            date(2026, 3, 31),
+            current_balance=Decimal("1000.00"),
+        )
+
+        assert len(projections) == 1
+        assert projections[0].amount == Decimal("800.00")
+        assert projections[0].balance_delta == Decimal("-800.00")
+        assert projections[0].projected_balance == Decimal("200.00")
 
     def test_get_projection_empty_rules(self):
         """Test projection with no rules."""

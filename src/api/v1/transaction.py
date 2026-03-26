@@ -1,0 +1,150 @@
+from datetime import date
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, Query, status
+from fastapi.responses import Response
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.api.v1.deps import get_current_user
+from src.database import get_session
+from src.models import TransactionType, User
+from src.schemas import (
+    LegacyTransactionCreate,
+    TransactionCreate,
+    TransactionResponse,
+    TransactionUpdate,
+)
+from src.services import TransactionService
+
+router = APIRouter()
+
+
+@router.post("", response_model=TransactionResponse, status_code=201)
+async def create_transaction(
+    transaction_in: TransactionCreate,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    return await TransactionService.create_transaction(
+        db,
+        current_user.id,
+        transaction_in,
+    )
+
+
+async def _create_legacy_transaction(
+    db: AsyncSession,
+    user_id: UUID,
+    transaction_in: LegacyTransactionCreate,
+    transaction_type: TransactionType,
+):
+    payload = TransactionCreate(
+        **transaction_in.model_dump(),
+        type=transaction_type,
+    )
+    return await TransactionService.create_transaction(
+        db,
+        user_id,
+        payload,
+    )
+
+
+@router.post(
+    "/incomes",
+    response_model=TransactionResponse,
+    status_code=status.HTTP_201_CREATED,
+    deprecated=True,
+)
+async def create_income_legacy(
+    transaction_in: LegacyTransactionCreate,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    return await _create_legacy_transaction(
+        db,
+        current_user.id,
+        transaction_in,
+        TransactionType.INCOME,
+    )
+
+
+@router.post(
+    "/expenses",
+    response_model=TransactionResponse,
+    status_code=status.HTTP_201_CREATED,
+    deprecated=True,
+)
+async def create_expense_legacy(
+    transaction_in: LegacyTransactionCreate,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    return await _create_legacy_transaction(
+        db,
+        current_user.id,
+        transaction_in,
+        TransactionType.EXPENSE,
+    )
+
+
+@router.get("", response_model=list[TransactionResponse])
+async def list_transactions(
+    account_id: UUID | None = None,
+    category_id: UUID | None = None,
+    transaction_type: TransactionType | None = Query(None, alias="type"),
+    date_from: date | None = None,
+    date_to: date | None = None,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    return await TransactionService.list_transactions(
+        db,
+        current_user.id,
+        account_id=account_id,
+        category_id=category_id,
+        transaction_type=transaction_type,
+        date_from=date_from,
+        date_to=date_to,
+    )
+
+
+@router.get("/{transaction_id}", response_model=TransactionResponse)
+async def get_transaction(
+    transaction_id: UUID,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    return await TransactionService.get_transaction(
+        db,
+        current_user.id,
+        transaction_id,
+    )
+
+
+@router.put("/{transaction_id}", response_model=TransactionResponse)
+async def update_transaction(
+    transaction_id: UUID,
+    transaction_in: TransactionUpdate,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    return await TransactionService.update_transaction(
+        db,
+        current_user.id,
+        transaction_id,
+        transaction_in,
+    )
+
+
+@router.delete("/{transaction_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_transaction(
+    transaction_id: UUID,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    await TransactionService.delete_transaction(
+        db,
+        current_user.id,
+        transaction_id,
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

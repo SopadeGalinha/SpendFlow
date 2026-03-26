@@ -16,6 +16,14 @@ class TransactionType(str, Enum):
     EXPENSE = "expense"
 
 
+class CategoryType(str, Enum):
+    """Category types supported by budgeting and reporting."""
+
+    INCOME = "income"
+    EXPENSE = "expense"
+    TRANSFER = "transfer"
+
+
 class Frequency(str, Enum):
     """Recurrence frequency for virtual projections."""
 

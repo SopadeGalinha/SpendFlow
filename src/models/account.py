@@ -14,6 +14,7 @@ from sqlmodel import (
 
 if TYPE_CHECKING:
     from .calendar import RecurringRule
+    from .transaction import Transaction
     from .user import User
 
 
@@ -44,6 +45,9 @@ class Account(SQLModel, table=True):
 
     user: "User" = Relationship(back_populates="accounts")
     recurring_rules: List["RecurringRule"] = Relationship(
+        back_populates="account",
+    )
+    transactions: List["Transaction"] = Relationship(
         back_populates="account",
     )
 

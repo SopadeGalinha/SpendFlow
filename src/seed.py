@@ -73,28 +73,31 @@ async def seed_data():
                 ),
                 type=TransactionType.INCOME,
                 frequency=Frequency.MONTHLY,
+                interval=1,
                 start_date=date(2026, 3, 1),  # Sunday
                 weekend_adjustment=WeekendAdjustment.FOLLOWING,
                 account_id=account.id,
             ),
             RecurringRule(
                 description="Rent (Always Friday if on Weekend)",
-                amount=Decimal("-800.00").quantize(
+                amount=Decimal("800.00").quantize(
                     Decimal("0.01"), rounding=ROUND_HALF_UP
                 ),
                 type=TransactionType.EXPENSE,
                 frequency=Frequency.MONTHLY,
+                interval=1,
                 start_date=date(2026, 3, 28),  # Saturday
                 weekend_adjustment=WeekendAdjustment.PRECEDING,
                 account_id=account.id,
             ),
             RecurringRule(
                 description="Netflix (Keep Original Date Even if on Weekend)",
-                amount=Decimal("-15.00").quantize(
+                amount=Decimal("15.00").quantize(
                     Decimal("0.01"), rounding=ROUND_HALF_UP
                 ),
                 type=TransactionType.EXPENSE,
                 frequency=Frequency.MONTHLY,
+                interval=1,
                 start_date=date(2026, 3, 15),  # Sunday
                 weekend_adjustment=WeekendAdjustment.KEEP,
                 account_id=account.id,

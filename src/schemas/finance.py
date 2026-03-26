@@ -16,9 +16,13 @@ class ProjectionResponse(BaseModel):
     date: date
     is_virtual: bool
     rule_id: UUID
+    balance_delta: Decimal = Decimal("0.00")
+    projected_balance: Decimal | None = None
 
     model_config = {"from_attributes": True}
 
-    @field_serializer("amount")
-    def serialize_amount(self, value: Decimal) -> str:
+    @field_serializer("amount", "balance_delta", "projected_balance")
+    def serialize_decimal(self, value: Decimal | None) -> str | None:
+        if value is None:
+            return None
         return str(value)

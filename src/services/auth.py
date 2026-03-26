@@ -20,14 +20,24 @@ logger = logging.getLogger(__name__)
 
 class AuthService:
     @staticmethod
+    def normalize_identifier(value: str) -> str:
+        return value.strip().lower()
+
+    @staticmethod
     async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
-        return await UserRepository.get_by_email(db, email)
+        return await UserRepository.get_by_email(
+            db,
+            AuthService.normalize_identifier(email),
+        )
 
     @staticmethod
     async def get_user_by_username(
         db: AsyncSession, username: str
     ) -> User | None:
-        return await UserRepository.get_by_username(db, username)
+        return await UserRepository.get_by_username(
+            db,
+            AuthService.normalize_identifier(username),
+        )
 
     @staticmethod
     async def get_user_by_id(db: AsyncSession, user_id: UUID) -> User | None:
@@ -69,22 +79,23 @@ class AuthService:
     async def authenticate_user(
         db: AsyncSession, email: str, password: str
     ) -> User | None:
-        user = await UserRepository.get_by_email(db, email)
+        normalized_email = AuthService.normalize_identifier(email)
+        user = await UserRepository.get_by_email(db, normalized_email)
         if not user:
             logger.warning(
                 "Login failed: user not found",
-                extra={"email": email},
+                extra={"email": normalized_email},
             )
             return None
         if not verify_password(password, user.hashed_password):
             logger.warning(
                 "Login failed: incorrect password",
-                extra={"email": email},
+                extra={"email": normalized_email},
             )
             return None
         logger.info(
             "User authenticated successfully",
-            extra={"user_id": str(user.id), "email": email},
+            extra={"user_id": str(user.id), "email": normalized_email},
         )
         return user
 

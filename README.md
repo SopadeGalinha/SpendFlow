@@ -29,7 +29,7 @@ graph TD
 ## Key Features
 - **User Authentication**: JWT-based, secure password hashing, registration, and login endpoints.
 - **Account Management**: Create, list, soft-delete, and restore accounts. Soft-deleted accounts are hidden but recoverable.
-- **Recurring Rules & Projections**: Define recurring income/expenses. Project future transactions for any period, with weekend adjustment rules.
+- **Recurring Rules & Projections**: Define recurring income/expenses, including every N days/weeks/months/years via an interval. Project future transactions for any period, with weekend adjustment rules.
 - **Security**: Rate limiting, CORS, security headers, and centralized error handling.
 - **Extensible**: Modular codebase, easy to add new endpoints or business logic.
 
@@ -42,12 +42,26 @@ graph TD
 - `POST /api/v1/auth/login` — Obtain JWT token
 
 ### Accounts
-- `GET /api/v1/finance/accounts` — List all active accounts
-- `DELETE /api/v1/finance/accounts/{account_id}` — Soft-delete an account
-- `POST /api/v1/finance/accounts/{account_id}/restore` — Restore a soft-deleted account
+- `POST /api/v1/accounts/accounts` — Create an account
+- `GET /api/v1/accounts/accounts` — List all active accounts
+- `GET /api/v1/accounts/accounts/{account_id}` — Get a single account
+- `PUT /api/v1/accounts/accounts/{account_id}` — Update an account
+- `DELETE /api/v1/accounts/accounts/{account_id}` — Soft-delete an account
+- `POST /api/v1/accounts/accounts/{account_id}/restore` — Restore a soft-deleted account
 
 ### Calendar/Projections
-- `GET /api/v1/calendar/projection?account_id=...&month=...&year=...` — Get projected transactions for a given account and month
+- `GET /api/v1/calendar/projection?account_id=...&month=...&year=...` — Get projected recurring transactions with running projected balance for a given account and month
+- `POST /api/v1/calendar/rules` — Create a recurring rule
+- `GET /api/v1/calendar/rules` — List recurring rules, optionally filtered by `account_id`
+- `GET /api/v1/calendar/rules/{rule_id}` — Get a recurring rule
+- `PUT /api/v1/calendar/rules/{rule_id}` — Update a recurring rule
+- `DELETE /api/v1/calendar/rules/{rule_id}` — Soft-delete a recurring rule
+
+### Transactions
+- `POST /api/v1/transactions` — Create a transaction; pass `type` as `income` or `expense`
+- `GET /api/v1/transactions` — List transactions with optional filters such as `type`, `account_id`, `category_id`, `date_from`, and `date_to`
+- `POST /api/v1/transactions/incomes` — Deprecated compatibility alias for legacy clients
+- `POST /api/v1/transactions/expenses` — Deprecated compatibility alias for legacy clients
 
 ---
 
@@ -56,6 +70,7 @@ graph TD
 - **User**: username, email, hashed_password, timezone, currency, default_weekend_adjustment, created_at, updated_at
 - **Account**: id, name, balance, user_id, deleted_at
 - **RecurringRule**: id, description, amount, type (income/expense), frequency, start_date, end_date, weekend_adjustment, account_id
+- **RecurringRule**: id, description, amount, type (income/expense), frequency, interval, start_date, end_date, weekend_adjustment, account_id
 
 ---
 
@@ -69,8 +84,9 @@ The `/calendar/projection` endpoint returns a list of projected transactions for
 
 1. **Register/Login**: Obtain a JWT token via `/auth/register` and `/auth/login`.
 2. **Authenticate**: Pass the JWT token as a Bearer token in the `Authorization` header for all requests.
-3. **Accounts**: Use `/finance/accounts` endpoints to manage user accounts.
-4. **Projections**: Use `/calendar/projection` to fetch virtual/projected transactions for display in calendars, dashboards, or cash flow charts.
+3. **Accounts**: Use `/api/v1/accounts/accounts` endpoints to manage user accounts.
+4. **Recurring Rules**: Use `/calendar/rules` to create weekly, monthly, or interval-based rules such as every 15 days.
+5. **Projections**: Use `/calendar/projection` to fetch virtual/projected transactions with projected balances for cash flow checks.
 
 ---
 

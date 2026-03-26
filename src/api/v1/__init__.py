@@ -1,5 +1,7 @@
 from .account import router as accounts
 from .auth import router as auth
-from .calendar.projection import router as calendar
+from .calendar import router as calendar
+from .category import router as categories
+from .transaction import router as transactions
 
-__all__ = ["accounts", "calendar", "auth"]
+__all__ = ["accounts", "calendar", "auth", "categories", "transactions"]
