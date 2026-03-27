@@ -85,13 +85,11 @@ class TransactionRepository:
         transaction: Transaction,
     ) -> Transaction:
         db.add(transaction)
-        await db.commit()
-        await db.refresh(transaction)
+        await db.flush()
         return transaction
 
     @staticmethod
     async def save(db: AsyncSession, transaction: Transaction) -> Transaction:
         db.add(transaction)
-        await db.commit()
-        await db.refresh(transaction)
+        await db.flush()
         return transaction

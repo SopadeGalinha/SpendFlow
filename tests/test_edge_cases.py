@@ -38,7 +38,7 @@ def test_user_cannot_list_other_user_accounts(
     event_loop.run_until_complete(setup())
 
     response = client.get(
-        "/api/v1/accounts/accounts",
+        "/api/v1/accounts",
         headers={"Authorization": f"Bearer {test_user}"},
     )
     data = response.json()
@@ -64,7 +64,7 @@ def test_cannot_update_account_balance_to_negative(
     account = event_loop.run_until_complete(setup())
 
     response = client.put(
-        f"/api/v1/accounts/accounts/{account.id}",
+        f"/api/v1/accounts/{account.id}",
         headers={"Authorization": f"Bearer {test_user}"},
         json={
             "name": "Updated",
@@ -93,12 +93,12 @@ def test_deleted_account_cannot_be_accessed(
     account = event_loop.run_until_complete(setup())
 
     client.delete(
-        f"/api/v1/accounts/accounts/{account.id}",
+        f"/api/v1/accounts/{account.id}",
         headers={"Authorization": f"Bearer {test_user}"},
     )
 
     response = client.get(
-        f"/api/v1/accounts/accounts/{account.id}",
+        f"/api/v1/accounts/{account.id}",
         headers={"Authorization": f"Bearer {test_user}"},
     )
     assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -107,11 +107,11 @@ def test_deleted_account_cannot_be_accessed(
 def test_account_name_with_special_characters(client, test_user):
     """Test that account names with special characters work."""
     response = client.post(
-        "/api/v1/accounts/accounts",
+        "/api/v1/accounts",
         headers={"Authorization": f"Bearer {test_user}"},
         json={
             "name": "Banco Centro 2026 (Investimentos)",
-            "balance": "1000.00",
+            "opening_balance": "1000.00",
         },
     )
     assert response.status_code == status.HTTP_201_CREATED
@@ -120,11 +120,11 @@ def test_account_name_with_special_characters(client, test_user):
 def test_account_with_large_balance(client, test_user):
     """Test that accounts with large balances work."""
     response = client.post(
-        "/api/v1/accounts/accounts",
+        "/api/v1/accounts",
         headers={"Authorization": f"Bearer {test_user}"},
         json={
             "name": "High Balance",
-            "balance": "999999999.99",
+            "opening_balance": "999999999.99",
         },
     )
     assert response.status_code == status.HTTP_201_CREATED
@@ -135,11 +135,11 @@ def test_account_with_large_balance(client, test_user):
 def test_account_with_precise_decimal(client, test_user):
     """Test that account balances maintain decimal precision."""
     response = client.post(
-        "/api/v1/accounts/accounts",
+        "/api/v1/accounts",
         headers={"Authorization": f"Bearer {test_user}"},
         json={
             "name": "Precise",
-            "balance": "123.45",
+            "opening_balance": "123.45",
         },
     )
     assert response.status_code == status.HTTP_201_CREATED
@@ -151,17 +151,17 @@ def test_multiple_accounts_same_user(client, test_user):
     """Test creating multiple accounts for same user."""
     for i in range(5):
         response = client.post(
-            "/api/v1/accounts/accounts",
+            "/api/v1/accounts",
             headers={"Authorization": f"Bearer {test_user}"},
             json={
                 "name": f"Account {i}",
-                "balance": f"{100 * i}.00",
+                "opening_balance": f"{100 * i}.00",
             },
         )
         assert response.status_code == status.HTTP_201_CREATED
 
     response = client.get(
-        "/api/v1/accounts/accounts",
+        "/api/v1/accounts",
         headers={"Authorization": f"Bearer {test_user}"},
     )
     data = response.json()

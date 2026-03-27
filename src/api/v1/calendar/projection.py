@@ -3,7 +3,7 @@ from datetime import date
 from typing import List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
@@ -43,11 +43,9 @@ async def get_calendar_projection(
     account_result = await session.execute(account_stmt)
     account = account_result.scalar_one_or_none()
     if not account or account.user_id != current_user.id:
-        from fastapi import HTTPException
-
         raise HTTPException(
-            status_code=403,
-            detail="Account does not belong to the current user.",
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Account not found.",
         )
 
     # Fetch recurring rules for the account from the database, only non-deleted

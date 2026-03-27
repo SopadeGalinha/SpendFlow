@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Optional
 from uuid import UUID, uuid4
 
 from sqlmodel import (
+    CheckConstraint,
     Column,
     DateTime,
     Field,
@@ -22,6 +23,14 @@ class RecurringRule(SQLModel, table=True):
     """Virtual template for recurring transactions.
     Provides logic for projecting future cash flow.
     """
+
+    __table_args__ = (
+        CheckConstraint("amount > 0", name="ck_recurringrule_amount_positive"),
+        CheckConstraint(
+            "interval >= 1",
+            name="ck_recurringrule_interval_positive",
+        ),
+    )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     description: str = Field(nullable=False)

@@ -3,6 +3,7 @@ from datetime import timedelta
 from uuid import UUID
 
 from fastapi import HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.config import settings
@@ -65,7 +66,16 @@ class AuthService:
             currency=user_data.currency,
             default_weekend_adjustment=user_data.default_weekend_adjustment,
         )
-        created_user = await UserRepository.create(db, user)
+        try:
+            created_user = await UserRepository.create(db, user)
+            await db.commit()
+        except IntegrityError:
+            await db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="User already exists.",
+            )
+        await db.refresh(created_user)
         logger.info(
             "User registered successfully",
             extra={

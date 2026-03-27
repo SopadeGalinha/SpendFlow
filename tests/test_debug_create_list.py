@@ -33,7 +33,7 @@ def test_debug_create_and_list(
 
     # Now try to list them
     response = client.get(
-        "/api/v1/accounts/accounts",
+        "/api/v1/accounts",
         headers={"Authorization": f"Bearer {test_user}"},
     )
 

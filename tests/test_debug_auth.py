@@ -18,7 +18,9 @@ def test_debug_authenticated_request(client, session, event_loop):
             id=uuid4(),
             username="debuguser",
             email="debug@example.com",
-            hashed_password="$2b$12$abcdefghijklmnopqrstuppphashed_password_placeholder",
+            hashed_password=(
+                "$2b$12$abcdefghijklmnopqrstuppphashed_password_placeholder"
+            ),
             timezone="UTC",
             currency="USD",
         )
@@ -39,7 +41,7 @@ def test_debug_authenticated_request(client, session, event_loop):
 
     # Try to call the protected endpoint
     response = client.get(
-        "/api/v1/accounts/accounts",
+        "/api/v1/accounts",
         headers={"Authorization": f"Bearer {token}"},
     )
 

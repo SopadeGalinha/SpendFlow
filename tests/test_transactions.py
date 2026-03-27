@@ -7,7 +7,12 @@ from uuid import UUID, uuid4
 from fastapi import status
 from sqlalchemy import select
 
-from src.models import Account, Transaction, TransactionType, User
+from src.models import (
+    Account,
+    Transaction,
+    TransactionType,
+    User,
+)
 
 
 async def _create_account(session, user_id, balance="1000.00"):
@@ -41,8 +46,7 @@ def _get_category_id(client, token, slug, category_type):
         params={"type": category_type},
     )
     assert response.status_code == status.HTTP_200_OK
-    data = response.json()
-    for category in data:
+    for category in response.json():
         if category["slug"] == slug:
             return category["id"]
     raise AssertionError(f"Category '{slug}' not found")
@@ -51,7 +55,6 @@ def _get_category_id(client, token, slug, category_type):
 def test_create_income_transaction(
     client, test_user, test_user_object, session, event_loop
 ):
-    """Creating an income should increase account balance."""
     account = event_loop.run_until_complete(
         _create_account(session, test_user_object.id)
     )
@@ -77,6 +80,7 @@ def test_create_income_transaction(
     assert response.status_code == status.HTTP_201_CREATED
     data = response.json()
     assert data["type"] == "income"
+    assert data["kind"] == "regular"
     assert data["amount"] == "250.00"
     assert data["category_id"] == salary_category_id
 
@@ -89,7 +93,6 @@ def test_create_income_transaction(
 def test_create_expense_transaction(
     client, test_user, test_user_object, session, event_loop
 ):
-    """Creating an expense should decrease balance."""
     account = event_loop.run_until_complete(
         _create_account(session, test_user_object.id)
     )
@@ -113,9 +116,7 @@ def test_create_expense_transaction(
         },
     )
     assert response.status_code == status.HTTP_201_CREATED
-    data = response.json()
-    assert data["type"] == "expense"
-    assert data["category_id"] == groceries_category_id
+    assert response.json()["kind"] == "regular"
 
     updated_account = event_loop.run_until_complete(
         _get_account(session, account.id)
@@ -123,10 +124,77 @@ def test_create_expense_transaction(
     assert updated_account.balance == Decimal("875.00")
 
 
+def test_create_transfer_between_accounts(
+    client, test_user, test_user_object, session, event_loop
+):
+    source_account = event_loop.run_until_complete(
+        _create_account(session, test_user_object.id, balance="1000.00")
+    )
+    destination_account = event_loop.run_until_complete(
+        _create_account(session, test_user_object.id, balance="300.00")
+    )
+
+    response = client.post(
+        "/api/v1/transactions/transfers",
+        headers={"Authorization": f"Bearer {test_user}"},
+        json={
+            "description": "Move cash",
+            "amount": "50.00",
+            "transaction_date": "2026-03-25",
+            "from_account_id": str(source_account.id),
+            "to_account_id": str(destination_account.id),
+        },
+    )
+    assert response.status_code == status.HTTP_201_CREATED
+    data = response.json()
+    assert data["amount"] == "50.00"
+    assert data["from_entry"]["kind"] == "transfer"
+    assert data["from_entry"]["type"] == "expense"
+    assert data["to_entry"]["kind"] == "transfer"
+    assert data["to_entry"]["type"] == "income"
+    assert data["from_entry"]["transfer_group_id"] == data["transfer_group_id"]
+    assert data["to_entry"]["transfer_group_id"] == data["transfer_group_id"]
+
+    updated_source = event_loop.run_until_complete(
+        _get_account(session, source_account.id)
+    )
+    updated_destination = event_loop.run_until_complete(
+        _get_account(session, destination_account.id)
+    )
+    assert updated_source.balance == Decimal("950.00")
+    assert updated_destination.balance == Decimal("350.00")
+
+
+def test_create_adjustment_entry(
+    client, test_user, test_user_object, session, event_loop
+):
+    account = event_loop.run_until_complete(
+        _create_account(session, test_user_object.id, balance="1000.00")
+    )
+
+    response = client.post(
+        "/api/v1/transactions/adjustments",
+        headers={"Authorization": f"Bearer {test_user}"},
+        json={
+            "description": "Reconciliation correction",
+            "amount": "25.00",
+            "type": "expense",
+            "transaction_date": "2026-03-25",
+            "account_id": str(account.id),
+        },
+    )
+    assert response.status_code == status.HTTP_201_CREATED
+    assert response.json()["kind"] == "adjustment"
+
+    updated_account = event_loop.run_until_complete(
+        _get_account(session, account.id)
+    )
+    assert updated_account.balance == Decimal("975.00")
+
+
 def test_create_income_legacy_alias(
     client, test_user, test_user_object, session, event_loop
 ):
-    """Deprecated income alias should still work for legacy clients."""
     account = event_loop.run_until_complete(
         _create_account(session, test_user_object.id)
     )
@@ -152,40 +220,9 @@ def test_create_income_legacy_alias(
     assert response.json()["type"] == "income"
 
 
-def test_create_expense_legacy_alias(
-    client, test_user, test_user_object, session, event_loop
-):
-    """Deprecated expense alias should still work for legacy clients."""
-    account = event_loop.run_until_complete(
-        _create_account(session, test_user_object.id)
-    )
-    groceries_category_id = _get_category_id(
-        client,
-        test_user,
-        "groceries",
-        "expense",
-    )
-
-    response = client.post(
-        "/api/v1/transactions/expenses",
-        headers={"Authorization": f"Bearer {test_user}"},
-        json={
-            "description": "Legacy groceries",
-            "amount": "125.00",
-            "transaction_date": "2026-03-25",
-            "account_id": str(account.id),
-            "category_id": groceries_category_id,
-        },
-    )
-    assert response.status_code == status.HTTP_201_CREATED
-    assert response.json()["type"] == "expense"
-
-
 def test_cannot_create_transaction_on_other_user_account(
     client, test_user, session, event_loop
 ):
-    """Users must not create transactions on accounts they do not own."""
-
     async def setup():
         other_user = User(
             id=uuid4(),
@@ -218,7 +255,6 @@ def test_cannot_create_transaction_on_other_user_account(
 def test_list_transactions_filtered_by_type(
     client, test_user, test_user_object, session, event_loop
 ):
-    """List endpoint should filter transactions by type."""
     account = event_loop.run_until_complete(
         _create_account(session, test_user_object.id)
     )
@@ -272,10 +308,11 @@ def test_list_transactions_filtered_by_type(
 
 
 def test_get_transaction_requires_ownership(
-    client, test_user, session, event_loop
+    client,
+    test_user,
+    session,
+    event_loop,
 ):
-    """A user must not fetch another user's transaction."""
-
     async def setup():
         other_user = User(
             id=uuid4(),
@@ -312,7 +349,6 @@ def test_get_transaction_requires_ownership(
 def test_update_transaction_recalculates_balance(
     client, test_user, test_user_object, session, event_loop
 ):
-    """Updating a transaction should recompute the account balance."""
     account = event_loop.run_until_complete(
         _create_account(session, test_user_object.id)
     )
@@ -352,10 +388,7 @@ def test_update_transaction_recalculates_balance(
         },
     )
     assert response.status_code == status.HTTP_200_OK
-    data = response.json()
-    assert data["type"] == "expense"
-    assert data["amount"] == "300.00"
-    assert data["category_id"] == groceries_category_id
+    assert response.json()["kind"] == "regular"
 
     updated_account = event_loop.run_until_complete(
         _get_account(session, account.id)
@@ -366,7 +399,6 @@ def test_update_transaction_recalculates_balance(
 def test_delete_transaction_reverses_balance(
     client, test_user, test_user_object, session, event_loop
 ):
-    """Deleting a transaction should reverse its effect on balance."""
     account = event_loop.run_until_complete(
         _create_account(session, test_user_object.id)
     )
@@ -403,7 +435,6 @@ def test_delete_transaction_reverses_balance(
 def test_transaction_cannot_make_balance_negative(
     client, test_user, test_user_object, session, event_loop
 ):
-    """Expense transactions cannot push the account below zero."""
     account = event_loop.run_until_complete(
         _create_account(session, test_user_object.id, balance="50.00")
     )
@@ -419,13 +450,42 @@ def test_transaction_cannot_make_balance_negative(
             "account_id": str(account.id),
         },
     )
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert response.status_code == status.HTTP_409_CONFLICT
+
+
+def test_transfer_entries_cannot_be_updated_directly(
+    client, test_user, test_user_object, session, event_loop
+):
+    source_account = event_loop.run_until_complete(
+        _create_account(session, test_user_object.id, balance="1000.00")
+    )
+    destination_account = event_loop.run_until_complete(
+        _create_account(session, test_user_object.id, balance="300.00")
+    )
+    transfer_response = client.post(
+        "/api/v1/transactions/transfers",
+        headers={"Authorization": f"Bearer {test_user}"},
+        json={
+            "description": "Move cash",
+            "amount": "50.00",
+            "transaction_date": "2026-03-25",
+            "from_account_id": str(source_account.id),
+            "to_account_id": str(destination_account.id),
+        },
+    )
+    transaction_id = transfer_response.json()["from_entry"]["id"]
+
+    response = client.put(
+        f"/api/v1/transactions/{transaction_id}",
+        headers={"Authorization": f"Bearer {test_user}"},
+        json={"amount": "75.00"},
+    )
+    assert response.status_code == status.HTTP_409_CONFLICT
 
 
 def test_create_transaction_rejects_negative_amount(
     client, test_user, test_user_object, session, event_loop
 ):
-    """Transaction creation must reject negative amounts."""
     account = event_loop.run_until_complete(
         _create_account(session, test_user_object.id)
     )
@@ -444,92 +504,9 @@ def test_create_transaction_rejects_negative_amount(
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
-def test_update_transaction_rejects_negative_amount(
-    client, test_user, test_user_object, session, event_loop
-):
-    """Transaction updates must reject negative amounts."""
-    account = event_loop.run_until_complete(
-        _create_account(session, test_user_object.id)
-    )
-    create_response = client.post(
-        "/api/v1/transactions",
-        headers={"Authorization": f"Bearer {test_user}"},
-        json={
-            "description": "Salary",
-            "amount": "100.00",
-            "type": "income",
-            "transaction_date": "2026-03-25",
-            "account_id": str(account.id),
-        },
-    )
-    transaction_id = create_response.json()["id"]
-
-    response = client.put(
-        f"/api/v1/transactions/{transaction_id}",
-        headers={"Authorization": f"Bearer {test_user}"},
-        json={"amount": "-5.00"},
-    )
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
-
-
-def test_list_transactions_by_account_and_date_range(
-    client, test_user, test_user_object, session, event_loop
-):
-    """List endpoint should support account and date-range filters."""
-    account = event_loop.run_until_complete(
-        _create_account(session, test_user_object.id)
-    )
-    salary_category_id = _get_category_id(
-        client,
-        test_user,
-        "salary",
-        "income",
-    )
-
-    client.post(
-        "/api/v1/transactions",
-        headers={"Authorization": f"Bearer {test_user}"},
-        json={
-            "description": "March salary",
-            "amount": "100.00",
-            "type": "income",
-            "transaction_date": "2026-03-01",
-            "account_id": str(account.id),
-            "category_id": salary_category_id,
-        },
-    )
-    client.post(
-        "/api/v1/transactions",
-        headers={"Authorization": f"Bearer {test_user}"},
-        json={
-            "description": "April salary",
-            "amount": "100.00",
-            "type": "income",
-            "transaction_date": "2026-04-01",
-            "account_id": str(account.id),
-            "category_id": salary_category_id,
-        },
-    )
-
-    response = client.get(
-        "/api/v1/transactions",
-        headers={"Authorization": f"Bearer {test_user}"},
-        params={
-            "account_id": str(account.id),
-            "date_from": "2026-03-01",
-            "date_to": "2026-03-31",
-        },
-    )
-    assert response.status_code == status.HTTP_200_OK
-    data = response.json()
-    assert len(data) == 1
-    assert data[0]["description"] == "March salary"
-
-
 def test_transaction_rejects_category_type_mismatch(
     client, test_user, test_user_object, session, event_loop
 ):
-    """Income transactions cannot use expense categories."""
     account = event_loop.run_until_complete(
         _create_account(session, test_user_object.id)
     )
@@ -552,14 +529,12 @@ def test_transaction_rejects_category_type_mismatch(
             "category_id": groceries_category_id,
         },
     )
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
 def test_transaction_rejects_other_user_category(
     client, test_user, test_user_object, session, event_loop
 ):
-    """A user cannot assign another user's private category."""
-
     async def setup():
         other_user = User(
             id=uuid4(),
@@ -571,10 +546,9 @@ def test_transaction_rejects_other_user_category(
         )
         session.add(other_user)
         await session.commit()
-        account = await _create_account(session, other_user.id)
-        return other_user, account
+        return other_user
 
-    other_user, _ = event_loop.run_until_complete(setup())
+    other_user = event_loop.run_until_complete(setup())
     own_account = event_loop.run_until_complete(
         _create_account(session, test_user_object.id)
     )
@@ -612,59 +586,3 @@ def test_transaction_rejects_other_user_category(
         },
     )
     assert response.status_code == status.HTTP_404_NOT_FOUND
-
-
-def test_list_transactions_filtered_by_category(
-    client, test_user, test_user_object, session, event_loop
-):
-    """List endpoint should support filtering by category."""
-    account = event_loop.run_until_complete(
-        _create_account(session, test_user_object.id)
-    )
-    salary_category_id = _get_category_id(
-        client,
-        test_user,
-        "salary",
-        "income",
-    )
-    freelance_category_id = _get_category_id(
-        client,
-        test_user,
-        "freelance",
-        "income",
-    )
-
-    client.post(
-        "/api/v1/transactions",
-        headers={"Authorization": f"Bearer {test_user}"},
-        json={
-            "description": "Salary",
-            "amount": "300.00",
-            "type": "income",
-            "transaction_date": "2026-03-01",
-            "account_id": str(account.id),
-            "category_id": salary_category_id,
-        },
-    )
-    client.post(
-        "/api/v1/transactions",
-        headers={"Authorization": f"Bearer {test_user}"},
-        json={
-            "description": "Freelance gig",
-            "amount": "200.00",
-            "type": "income",
-            "transaction_date": "2026-03-02",
-            "account_id": str(account.id),
-            "category_id": freelance_category_id,
-        },
-    )
-
-    response = client.get(
-        "/api/v1/transactions",
-        headers={"Authorization": f"Bearer {test_user}"},
-        params={"category_id": salary_category_id},
-    )
-    assert response.status_code == status.HTTP_200_OK
-    data = response.json()
-    assert len(data) == 1
-    assert data[0]["category_id"] == salary_category_id

@@ -7,8 +7,9 @@ from uuid import uuid4
 import pytest
 from pydantic import ValidationError
 
-from src.models.enums import TransactionType
+from src.models.enums import AccountType, BudgetScope, TransactionType
 from src.schemas.account import AccountCreate, AccountUpdate
+from src.schemas.budget import BudgetCloneCreate, BudgetCreate
 from src.schemas.finance import ProjectionResponse
 from src.schemas.recurring import RecurringRuleCreate, RecurringRuleUpdate
 from src.schemas.user import UserCreate
@@ -84,17 +85,18 @@ class TestAccountCreateSchema:
         """Test creating account with valid data."""
         account_data = AccountCreate(
             name="Checking Account",
-            balance=Decimal("1000.00"),
+            account_type=AccountType.CHECKING,
+            opening_balance=Decimal("1000.00"),
         )
         assert account_data.name == "Checking Account"
-        assert account_data.balance == Decimal("1000.00")
+        assert account_data.opening_balance == Decimal("1000.00")
 
     def test_account_empty_name(self):
         """Test that empty account name fails."""
         with pytest.raises(ValidationError):
             AccountCreate(
                 name="",
-                balance=Decimal("100.00"),
+                opening_balance=Decimal("100.00"),
             )
 
     def test_account_name_too_long(self):
@@ -102,7 +104,7 @@ class TestAccountCreateSchema:
         with pytest.raises(ValidationError):
             AccountCreate(
                 name="a" * 256,
-                balance=Decimal("100.00"),
+                opening_balance=Decimal("100.00"),
             )
 
     def test_account_negative_balance(self):
@@ -110,23 +112,27 @@ class TestAccountCreateSchema:
         with pytest.raises(ValidationError):
             AccountCreate(
                 name="Test",
-                balance=Decimal("-100.00"),
+                opening_balance=Decimal("-100.00"),
             )
 
     def test_account_default_balance(self):
-        """Test that balance defaults to None."""
+        """Test that opening balance defaults to None."""
         account_data = AccountCreate(
             name="Test Account",
         )
-        assert account_data.balance is None
+        assert account_data.opening_balance is None
 
     def test_account_zero_balance(self):
         """Test that zero balance is valid."""
         account_data = AccountCreate(
             name="Test",
-            balance=Decimal("0.00"),
+            opening_balance=Decimal("0.00"),
         )
-        assert account_data.balance == Decimal("0.00")
+        assert account_data.opening_balance == Decimal("0.00")
+
+    def test_account_rejects_deprecated_balance_field(self):
+        with pytest.raises(ValidationError):
+            AccountCreate(name="Test", balance=Decimal("100.00"))
 
 
 class TestAccountUpdateSchema:
@@ -136,10 +142,10 @@ class TestAccountUpdateSchema:
         """Test updating account with valid data."""
         update_data = AccountUpdate(
             name="New Name",
-            balance=Decimal("500.00"),
+            account_type=AccountType.SAVINGS,
         )
         assert update_data.name == "New Name"
-        assert update_data.balance == Decimal("500.00")
+        assert update_data.account_type == AccountType.SAVINGS
 
     def test_account_update_partial(self):
         """Test partial account update."""
@@ -147,15 +153,11 @@ class TestAccountUpdateSchema:
             name="New Name",
         )
         assert update_data.name == "New Name"
-        assert update_data.balance is None
+        assert update_data.account_type is None
 
-    def test_account_update_negative_balance(self):
-        """Test that negative balance in update fails."""
+    def test_account_update_rejects_deprecated_balance_field(self):
         with pytest.raises(ValidationError):
-            AccountUpdate(
-                name="Test",
-                balance=Decimal("-50.00"),
-            )
+            AccountUpdate(name="Test", balance=Decimal("-50.00"))
 
 
 class TestProjectionResponseSchema:
@@ -225,3 +227,34 @@ class TestRecurringRuleSchema:
     def test_recurring_rule_update_invalid_interval(self):
         with pytest.raises(ValidationError):
             RecurringRuleUpdate(interval=0)
+
+
+class TestBudgetSchema:
+    def test_valid_group_budget(self):
+        budget = BudgetCreate(
+            name="Groceries",
+            amount=Decimal("200.00"),
+            period_start=datetime(2026, 3, 1).date(),
+            period_end=datetime(2026, 3, 31).date(),
+            scope=BudgetScope.GROUP,
+            category_group_id=uuid4(),
+        )
+        assert budget.scope == BudgetScope.GROUP
+
+    def test_budget_requires_matching_scope_target(self):
+        with pytest.raises(ValidationError):
+            BudgetCreate(
+                name="Broken",
+                amount=Decimal("200.00"),
+                period_start=datetime(2026, 3, 1).date(),
+                period_end=datetime(2026, 3, 31).date(),
+                scope=BudgetScope.CATEGORY,
+                category_group_id=uuid4(),
+            )
+
+    def test_clone_budget_requires_valid_period(self):
+        with pytest.raises(ValidationError):
+            BudgetCloneCreate(
+                period_start=datetime(2026, 4, 30).date(),
+                period_end=datetime(2026, 4, 1).date(),
+            )

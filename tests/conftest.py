@@ -19,6 +19,7 @@ from src.core.security import create_access_token
 from src.database import get_session
 from src.main import app
 from src.models import User
+from src.services import CategoryService
 
 # Create a temporary directory for test databases
 test_db_dir = tempfile.gettempdir()
@@ -112,13 +113,16 @@ def session(event_loop):
 
 
 @pytest.fixture
-def client(session):
+def client(session, event_loop):
     """Create a test client with overridden database session."""
 
     # Override with an async generator for proper async dependency injection
     async def get_session_override():
         yield session
 
+    event_loop.run_until_complete(
+        CategoryService.bootstrap_system_catalog(session)
+    )
     app.dependency_overrides[get_session] = get_session_override
     yield TestClient(app)
     app.dependency_overrides.clear()

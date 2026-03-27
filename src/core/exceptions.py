@@ -6,7 +6,6 @@ from fastapi import HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-
 SENSITIVE_ERROR_FIELDS = {
     "password",
     "hashed_password",

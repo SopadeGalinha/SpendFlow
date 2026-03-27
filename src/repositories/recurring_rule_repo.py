@@ -72,8 +72,7 @@ class RecurringRuleRepository:
         rule: RecurringRule,
     ) -> RecurringRule:
         db.add(rule)
-        await db.commit()
-        await db.refresh(rule)
+        await db.flush()
         return rule
 
     @staticmethod
@@ -82,6 +81,5 @@ class RecurringRuleRepository:
         rule: RecurringRule,
     ) -> RecurringRule:
         db.add(rule)
-        await db.commit()
-        await db.refresh(rule)
+        await db.flush()
         return rule

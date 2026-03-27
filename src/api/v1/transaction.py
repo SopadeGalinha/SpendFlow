@@ -10,9 +10,12 @@ from src.database import get_session
 from src.models import TransactionType, User
 from src.schemas import (
     LegacyTransactionCreate,
+    TransactionAdjustmentCreate,
     TransactionCreate,
     TransactionResponse,
     TransactionUpdate,
+    TransferCreate,
+    TransferResponse,
 )
 from src.services import TransactionService
 
@@ -29,6 +32,49 @@ async def create_transaction(
         db,
         current_user.id,
         transaction_in,
+    )
+
+
+@router.post(
+    "/adjustments",
+    response_model=TransactionResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_adjustment(
+    transaction_in: TransactionAdjustmentCreate,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    return await TransactionService.create_adjustment(
+        db,
+        current_user.id,
+        transaction_in,
+    )
+
+
+@router.post(
+    "/transfers",
+    response_model=TransferResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_transfer(
+    transfer_in: TransferCreate,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    transfer_group_id, from_entry, to_entry = (
+        await TransactionService.create_transfer(
+            db,
+            current_user.id,
+            transfer_in,
+        )
+    )
+    return TransferResponse(
+        transfer_group_id=transfer_group_id,
+        amount=transfer_in.amount,
+        transaction_date=transfer_in.transaction_date,
+        from_entry=from_entry,
+        to_entry=to_entry,
     )
 
 

@@ -3,6 +3,7 @@ import re
 from uuid import UUID
 
 from fastapi import HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import Category, CategoryGroup, CategoryType
@@ -103,14 +104,13 @@ class CategoryService:
     async def ensure_default_catalog(
         cls,
         db: AsyncSession,
-        user_id: UUID,
     ) -> None:
-        existing_groups = await CategoryRepository.list_groups(db, user_id)
+        existing_groups = await CategoryRepository.list_system_groups(db)
         existing_group_slugs = {
             (group.slug, group.type): group
             for group in existing_groups
-            if group.is_system
         }
+        created_any = False
 
         for group_index, group_data in enumerate(
             DEFAULT_CATEGORY_CATALOG,
@@ -129,24 +129,21 @@ class CategoryService:
                         is_system=True,
                     ),
                 )
-
-            existing_categories = await CategoryRepository.list_categories(
-                db,
-                user_id,
-                group_id=group.id,
-            )
-            existing_category_slugs = {
-                category.slug
-                for category in existing_categories
-                if category.is_system
-            }
+                created_any = True
 
             for category_index, category_name in enumerate(
                 group_data["categories"],
                 start=1,
             ):
                 category_slug = cls._slugify(category_name)
-                if category_slug in existing_category_slugs:
+                existing_category = (
+                    await CategoryRepository.find_system_category_by_slug(
+                        db,
+                        group.id,
+                        category_slug,
+                    )
+                )
+                if existing_category is not None:
                     continue
 
                 is_transfer = group_data["type"] == CategoryType.TRANSFER
@@ -163,6 +160,19 @@ class CategoryService:
                         group_id=group.id,
                     ),
                 )
+                created_any = True
+
+        if created_any:
+            try:
+                await db.commit()
+            except IntegrityError:
+                await db.rollback()
+        else:
+            await db.rollback()
+
+    @classmethod
+    async def bootstrap_system_catalog(cls, db: AsyncSession) -> None:
+        await cls.ensure_default_catalog(db)
 
     @classmethod
     async def list_groups(
@@ -171,7 +181,6 @@ class CategoryService:
         user_id: UUID,
         category_type: CategoryType | None = None,
     ) -> list[CategoryGroup]:
-        await cls.ensure_default_catalog(db, user_id)
         return await CategoryRepository.list_groups(db, user_id, category_type)
 
     @classmethod
@@ -182,7 +191,6 @@ class CategoryService:
         category_type: CategoryType | None = None,
         group_id: UUID | None = None,
     ) -> list[Category]:
-        await cls.ensure_default_catalog(db, user_id)
         if group_id is not None:
             group = await CategoryRepository.get_accessible_group(
                 db,
@@ -234,7 +242,6 @@ class CategoryService:
         user_id: UUID,
         group_data: CategoryGroupCreate,
     ) -> CategoryGroup:
-        await cls.ensure_default_catalog(db, user_id)
         slug = cls._slugify(group_data.name)
         existing_group = await CategoryRepository.find_group_by_slug(
             db,
@@ -244,7 +251,7 @@ class CategoryService:
         )
         if existing_group is not None:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_409_CONFLICT,
                 detail="Category group already exists.",
             )
 
@@ -261,7 +268,16 @@ class CategoryService:
             user_id=user_id,
             is_system=False,
         )
-        created_group = await CategoryRepository.create_group(db, group)
+        try:
+            created_group = await CategoryRepository.create_group(db, group)
+            await db.commit()
+        except IntegrityError:
+            await db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Category group already exists.",
+            )
+        await db.refresh(created_group)
         logger.info(
             "Category group created",
             extra={"group_id": str(created_group.id), "user_id": str(user_id)},
@@ -275,7 +291,6 @@ class CategoryService:
         user_id: UUID,
         category_data: CategoryCreate,
     ) -> Category:
-        await cls.ensure_default_catalog(db, user_id)
         group = await CategoryRepository.get_accessible_group(
             db,
             user_id,
@@ -301,7 +316,7 @@ class CategoryService:
         )
         if existing_category is not None:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_409_CONFLICT,
                 detail="Category already exists in this group.",
             )
 
@@ -321,10 +336,19 @@ class CategoryService:
             exclude_from_budget=category_data.type == CategoryType.TRANSFER,
             group_id=group.id,
         )
-        created_category = await CategoryRepository.create_category(
-            db,
-            category,
-        )
+        try:
+            created_category = await CategoryRepository.create_category(
+                db,
+                category,
+            )
+            await db.commit()
+        except IntegrityError:
+            await db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Category already exists in this group.",
+            )
+        await db.refresh(created_category)
         logger.info(
             "Category created",
             extra={

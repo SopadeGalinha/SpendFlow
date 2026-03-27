@@ -148,7 +148,7 @@ def test_get_projection_unauthorized_account(
         },
         headers={"Authorization": f"Bearer {test_user}"},
     )
-    assert response.status_code == status.HTTP_403_FORBIDDEN
+    assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
 def test_get_projection_nonexistent_account(client, test_user):
@@ -162,7 +162,7 @@ def test_get_projection_nonexistent_account(client, test_user):
         },
         headers={"Authorization": f"Bearer {test_user}"},
     )
-    assert response.status_code == status.HTTP_403_FORBIDDEN
+    assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
 def test_get_projection_deleted_account(
@@ -197,7 +197,7 @@ def test_get_projection_deleted_account(
         },
         headers={"Authorization": f"Bearer {test_user}"},
     )
-    assert response.status_code == status.HTTP_403_FORBIDDEN
+    assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
 def test_get_projection_multiple_rules(

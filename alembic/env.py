@@ -7,6 +7,7 @@ from alembic import context
 from src.core.config import settings
 from src.models import (  # noqa: F401
     Account,
+    Budget,
     Category,
     CategoryGroup,
     RecurringRule,

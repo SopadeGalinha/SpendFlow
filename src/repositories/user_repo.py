@@ -34,6 +34,5 @@ class UserRepository:
     @staticmethod
     async def create(db: AsyncSession, user: User) -> User:
         db.add(user)
-        await db.commit()
-        await db.refresh(user)
+        await db.flush()
         return user

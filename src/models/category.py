@@ -2,7 +2,15 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
-from sqlmodel import Column, DateTime, Field, Relationship, SQLModel, func
+from sqlmodel import (
+    Column,
+    DateTime,
+    Field,
+    Relationship,
+    SQLModel,
+    UniqueConstraint,
+    func,
+)
 
 from src.models.category_group import CategoryGroup
 from src.models.enums import CategoryType
@@ -15,6 +23,9 @@ class Category(SQLModel, table=True):
     """Category with system defaults and user custom entries."""
 
     __tablename__ = "categories"
+    __table_args__ = (
+        UniqueConstraint("group_id", "slug", name="uq_categories_group_slug"),
+    )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     name: str = Field(nullable=False)

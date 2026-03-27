@@ -9,11 +9,27 @@ class WeekendAdjustment(str, Enum):
     PRECEDING = "preceding"  # Move to the previous Friday
 
 
+class AccountType(str, Enum):
+    """Supported V1 asset account types."""
+
+    CHECKING = "checking"
+    SAVINGS = "savings"
+
+
 class TransactionType(str, Enum):
     """Standard financial transaction types."""
 
     INCOME = "income"
     EXPENSE = "expense"
+
+
+class TransactionKind(str, Enum):
+    """Explains why a persisted ledger entry exists."""
+
+    REGULAR = "regular"
+    OPENING_BALANCE = "opening_balance"
+    ADJUSTMENT = "adjustment"
+    TRANSFER = "transfer"
 
 
 class CategoryType(str, Enum):
@@ -31,3 +47,18 @@ class Frequency(str, Enum):
     WEEKLY = "weekly"
     MONTHLY = "monthly"
     YEARLY = "yearly"
+
+
+class BudgetScope(str, Enum):
+    """How a budget applies to expense categorization."""
+
+    CATEGORY = "category"
+    GROUP = "group"
+
+
+class BudgetStatus(str, Enum):
+    """Derived lifecycle state for a budget based on its period."""
+
+    ACTIVE = "active"
+    UPCOMING = "upcoming"
+    ARCHIVED = "archived"

@@ -20,14 +20,14 @@ def test_root_endpoint(client):
 
 def test_protected_endpoint_without_token(client):
     """Test that protected endpoints require authentication."""
-    response = client.get("/api/v1/accounts/accounts")
+    response = client.get("/api/v1/accounts")
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 def test_protected_endpoint_with_invalid_token(client):
     """Test that invalid token is rejected."""
     response = client.get(
-        "/api/v1/accounts/accounts",
+        "/api/v1/accounts",
         headers={"Authorization": "Bearer invalid_token_here"},
     )
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
@@ -36,7 +36,7 @@ def test_protected_endpoint_with_invalid_token(client):
 def test_protected_endpoint_with_bearer_missing(client):
     """Test that missing Bearer prefix is rejected."""
     response = client.get(
-        "/api/v1/accounts/accounts",
+        "/api/v1/accounts",
         headers={"Authorization": "invalid_token_here"},
     )
     assert response.status_code in [

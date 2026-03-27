@@ -2,7 +2,15 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
-from sqlmodel import Column, DateTime, Field, Relationship, SQLModel, func
+from sqlmodel import (
+    Column,
+    DateTime,
+    Field,
+    Relationship,
+    SQLModel,
+    UniqueConstraint,
+    func,
+)
 
 from src.models.enums import CategoryType
 
@@ -14,6 +22,9 @@ class CategoryGroup(SQLModel, table=True):
     """Grouping layer for categories used by budgets and dashboards."""
 
     __tablename__ = "category_groups"
+    __table_args__ = (
+        UniqueConstraint("slug", "type", name="uq_category_groups_slug_type"),
+    )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     name: str = Field(nullable=False)

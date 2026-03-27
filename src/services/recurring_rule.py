@@ -78,6 +78,8 @@ class RecurringRuleService:
             account_id=rule_in.account_id,
         )
         created_rule = await RecurringRuleRepository.create(db, rule)
+        await db.commit()
+        await db.refresh(created_rule)
         logger.info(
             "Recurring rule created",
             extra={
@@ -164,6 +166,8 @@ class RecurringRuleService:
             rule.weekend_adjustment = rule_in.weekend_adjustment
 
         updated_rule = await RecurringRuleRepository.save(db, rule)
+        await db.commit()
+        await db.refresh(updated_rule)
         logger.info(
             "Recurring rule updated",
             extra={"rule_id": str(updated_rule.id)},
@@ -180,6 +184,7 @@ class RecurringRuleService:
         rule = await cls.get_rule(db, user_id, rule_id)
         rule.deleted_at = datetime.now(timezone.utc)
         await RecurringRuleRepository.save(db, rule)
+        await db.commit()
         logger.info(
             "Recurring rule soft-deleted",
             extra={"rule_id": str(rule.id)},

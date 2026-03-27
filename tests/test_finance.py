@@ -1,63 +1,86 @@
 """Tests for account management and soft delete functionality."""
 
 from decimal import Decimal
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi import status
+from sqlalchemy import select
 
-from src.models import Account
+from src.models import Account, Transaction, TransactionKind
 
 
-def test_create_account(client, test_user, test_user_object):
-    """Test account creation with valid data."""
+def test_create_account(client, test_user):
     response = client.post(
-        "/api/v1/accounts/accounts",
+        "/api/v1/accounts",
         headers={"Authorization": f"Bearer {test_user}"},
         json={
             "name": "Checking Account",
-            "balance": "1000.50",
+            "account_type": "checking",
+            "opening_balance": "1000.50",
         },
     )
     assert response.status_code == status.HTTP_201_CREATED
     data = response.json()
     assert data["name"] == "Checking Account"
+    assert data["account_type"] == "checking"
     assert data["balance"] == "1000.50"
+
+
+def test_create_account_writes_opening_balance_entry(
+    client, test_user, session, event_loop
+):
+    response = client.post(
+        "/api/v1/accounts",
+        headers={"Authorization": f"Bearer {test_user}"},
+        json={
+            "name": "Seeded Account",
+            "opening_balance": "500.00",
+        },
+    )
+    account_id = UUID(response.json()["id"])
+
+    async def load_transactions():
+        stmt = select(Transaction).where(Transaction.account_id == account_id)
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
+
+    transactions = event_loop.run_until_complete(load_transactions())
+    assert len(transactions) == 1
+    assert transactions[0].kind == TransactionKind.OPENING_BALANCE
+    assert transactions[0].amount == Decimal("500.00")
 
 
 def test_list_accounts(
     client, test_user, test_user_object, session, event_loop
 ):
-    """Test listing user's accounts."""
-
     async def setup():
-        account1 = Account(
-            name="Account 1",
-            balance=Decimal("100.00"),
-            user_id=test_user_object.id,
+        session.add(
+            Account(
+                name="Account 1",
+                balance=Decimal("100.00"),
+                user_id=test_user_object.id,
+            )
         )
-        account2 = Account(
-            name="Account 2",
-            balance=Decimal("200.00"),
-            user_id=test_user_object.id,
+        session.add(
+            Account(
+                name="Account 2",
+                balance=Decimal("200.00"),
+                user_id=test_user_object.id,
+            )
         )
-        session.add(account1)
-        session.add(account2)
         await session.commit()
 
     event_loop.run_until_complete(setup())
 
     response = client.get(
-        "/api/v1/accounts/accounts",
+        "/api/v1/accounts",
         headers={"Authorization": f"Bearer {test_user}"},
     )
     assert response.status_code == status.HTTP_200_OK
-    data = response.json()
-    assert len(data) == 2
+    assert len(response.json()) == 2
 
 
 def test_get_account(client, test_user, test_user_object, session, event_loop):
-    """Test retrieving a specific account."""
-
     async def setup():
         account = Account(
             name="Test Account",
@@ -72,7 +95,7 @@ def test_get_account(client, test_user, test_user_object, session, event_loop):
     account = event_loop.run_until_complete(setup())
 
     response = client.get(
-        f"/api/v1/accounts/accounts/{account.id}",
+        f"/api/v1/accounts/{account.id}",
         headers={"Authorization": f"Bearer {test_user}"},
     )
     assert response.status_code == status.HTTP_200_OK
@@ -81,11 +104,9 @@ def test_get_account(client, test_user, test_user_object, session, event_loop):
     assert data["balance"] == "500.00"
 
 
-def test_update_account(
+def test_update_account_name_and_type(
     client, test_user, test_user_object, session, event_loop
 ):
-    """Test updating an existing account."""
-
     async def setup():
         account = Account(
             name="Old Name",
@@ -100,24 +121,23 @@ def test_update_account(
     account = event_loop.run_until_complete(setup())
 
     response = client.put(
-        f"/api/v1/accounts/accounts/{account.id}",
+        f"/api/v1/accounts/{account.id}",
         headers={"Authorization": f"Bearer {test_user}"},
         json={
             "name": "New Name",
-            "balance": "250.00",
+            "account_type": "savings",
         },
     )
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
     assert data["name"] == "New Name"
-    assert data["balance"] == "250.00"
+    assert data["account_type"] == "savings"
+    assert data["balance"] == "100.00"
 
 
 def test_delete_account_soft_delete(
     client, test_user, test_user_object, session, event_loop
 ):
-    """Test soft delete functionality."""
-
     async def setup():
         account = Account(
             name="To Delete",
@@ -130,24 +150,17 @@ def test_delete_account_soft_delete(
         return account
 
     account = event_loop.run_until_complete(setup())
-    account_id = account.id
-
-    assert account.deleted_at is None
 
     response = client.delete(
-        f"/api/v1/accounts/accounts/{account_id}",
+        f"/api/v1/accounts/{account.id}",
         headers={"Authorization": f"Bearer {test_user}"},
     )
     assert response.status_code == status.HTTP_204_NO_CONTENT
 
-    # Query the account fresh to verify deletion
     async def check_deleted():
-        from sqlalchemy import select
-
-        stmt = select(Account).where(Account.id == account_id)
+        stmt = select(Account).where(Account.id == account.id)
         result = await session.execute(stmt)
-        updated_account = result.scalar_one_or_none()
-        return updated_account
+        return result.scalar_one_or_none()
 
     updated_account = event_loop.run_until_complete(check_deleted())
     assert updated_account is not None
@@ -157,8 +170,6 @@ def test_delete_account_soft_delete(
 def test_deleted_account_not_listed(
     client, test_user, test_user_object, session, event_loop
 ):
-    """Test that deleted accounts don't appear in list."""
-
     async def setup():
         account = Account(
             name="Deleted Account",
@@ -173,23 +184,20 @@ def test_deleted_account_not_listed(
     account = event_loop.run_until_complete(setup())
 
     client.delete(
-        f"/api/v1/accounts/accounts/{account.id}",
+        f"/api/v1/accounts/{account.id}",
         headers={"Authorization": f"Bearer {test_user}"},
     )
 
     response = client.get(
-        "/api/v1/accounts/accounts",
+        "/api/v1/accounts",
         headers={"Authorization": f"Bearer {test_user}"},
     )
-    data = response.json()
-    assert len(data) == 0
+    assert len(response.json()) == 0
 
 
 def test_restore_account(
     client, test_user, test_user_object, session, event_loop
 ):
-    """Test restoring a soft-deleted account."""
-
     async def setup():
         account = Account(
             name="Will Restore",
@@ -202,44 +210,29 @@ def test_restore_account(
         return account
 
     account = event_loop.run_until_complete(setup())
-    account_id = account.id
 
     client.delete(
-        f"/api/v1/accounts/accounts/{account_id}",
+        f"/api/v1/accounts/{account.id}",
         headers={"Authorization": f"Bearer {test_user}"},
     )
 
     response = client.post(
-        f"/api/v1/accounts/accounts/{account_id}/restore",
+        f"/api/v1/accounts/{account.id}/restore",
         headers={"Authorization": f"Bearer {test_user}"},
     )
     assert response.status_code == status.HTTP_200_OK
-
-    # Query the account fresh to verify restoration
-    async def check_restored():
-        from sqlalchemy import select
-
-        stmt = select(Account).where(Account.id == account_id)
-        result = await session.execute(stmt)
-        updated_account = result.scalar_one_or_none()
-        return updated_account
-
-    updated_account = event_loop.run_until_complete(check_restored())
-    assert updated_account is not None
-    assert updated_account.deleted_at is None
+    assert response.json()["id"] == str(account.id)
+    assert response.json()["balance"] == "100.00"
 
 
 def test_cannot_access_other_user_account(
-    client, test_user, test_user_object, session, event_loop
+    client, test_user, session, event_loop
 ):
-    """Test that users cannot access other user's accounts."""
-
     async def setup():
-        other_user_id = uuid4()
         account = Account(
             name="Other User Account",
             balance=Decimal("1000.00"),
-            user_id=other_user_id,
+            user_id=uuid4(),
         )
         session.add(account)
         await session.commit()
@@ -249,33 +242,31 @@ def test_cannot_access_other_user_account(
     account = event_loop.run_until_complete(setup())
 
     response = client.get(
-        f"/api/v1/accounts/accounts/{account.id}",
+        f"/api/v1/accounts/{account.id}",
         headers={"Authorization": f"Bearer {test_user}"},
     )
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
 def test_account_name_validation(client, test_user):
-    """Test that account name validation works."""
     response = client.post(
-        "/api/v1/accounts/accounts",
+        "/api/v1/accounts",
         headers={"Authorization": f"Bearer {test_user}"},
         json={
             "name": "",
-            "balance": "100.00",
+            "opening_balance": "100.00",
         },
     )
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
-def test_account_balance_cannot_be_negative(client, test_user):
-    """Test that account balance validation works."""
+def test_account_opening_balance_cannot_be_negative(client, test_user):
     response = client.post(
-        "/api/v1/accounts/accounts",
+        "/api/v1/accounts",
         headers={"Authorization": f"Bearer {test_user}"},
         json={
             "name": "Test",
-            "balance": "-100.00",
+            "opening_balance": "-100.00",
         },
     )
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
