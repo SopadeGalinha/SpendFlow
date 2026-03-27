@@ -62,14 +62,13 @@ graph TD
 - `POST /api/v1/transactions/adjustments` — Create a manual adjustment ledger entry
 - `POST /api/v1/transactions/transfers` — Move money atomically between two accounts
 - `GET /api/v1/transactions` — List transactions with optional filters such as `type`, `account_id`, `category_id`, `date_from`, and `date_to`
-- `POST /api/v1/transactions/incomes` — Deprecated compatibility alias for legacy clients
-- `POST /api/v1/transactions/expenses` — Deprecated compatibility alias for legacy clients
 
 ### Budgets
 - `POST /api/v1/budgets` — Create a budget for one expense category or category group
-- `GET /api/v1/budgets` — List budgets with computed spent and remaining amounts
+- `GET /api/v1/budgets` — List budgets with computed spent, remaining amount, lifecycle status, and optional filters such as `status`, `year`, `month`, `period_start_from`, and `period_end_to`
 - `GET /api/v1/budgets/{budget_id}` — Get one budget
 - `PUT /api/v1/budgets/{budget_id}` — Update a budget target or date range
+- `POST /api/v1/budgets/{budget_id}/clone` — Create a new budget from an existing one while changing name, amount, and period
 - `DELETE /api/v1/budgets/{budget_id}` — Delete a budget
 
 ---
@@ -79,7 +78,7 @@ graph TD
 - **User**: username, email, hashed_password, timezone, currency, default_weekend_adjustment, created_at, updated_at
 - **Account**: id, name, account_type, balance, user_id, deleted_at
 - **Transaction**: id, description, amount, type, kind, account_id, category_id, transfer_group_id, transaction_date
-- **Budget**: id, name, amount, period_start, period_end, scope, category_id or category_group_id
+- **Budget**: id, name, amount, period_start, period_end, scope, status, category_id or category_group_id
 - **RecurringRule**: id, description, amount, type, frequency, interval, start_date, end_date, weekend_adjustment, account_id
 
 ---
@@ -96,7 +95,7 @@ The `/calendar/projection` endpoint returns a list of projected transactions for
 2. **Authenticate**: Pass the JWT token as a Bearer token in the `Authorization` header for all requests.
 3. **Accounts**: Use `/api/v1/accounts` endpoints to manage user accounts.
 4. **Recurring Rules**: Use `/calendar/rules` to create weekly, monthly, or interval-based rules such as every 15 days.
-5. **Budgets**: Use `/api/v1/budgets` to track planned versus actual expense spending.
+5. **Budgets**: Use `/api/v1/budgets` to track planned versus actual expense spending, filter by lifecycle (`active`, `upcoming`, `archived`), and clone budgets from a previous period.
 6. **Projections**: Use `/calendar/projection` to fetch virtual/projected transactions with projected balances for cash flow checks.
 
 ---
@@ -310,10 +309,55 @@ curl -X GET "$BASE_URL/api/v1/budgets" \
 ```
 
 O retorno já traz campos como:
+- `status`
 - `spent`
 - `remaining`
+- `category_name`
+- `category_slug`
+- `category_group_name`
+- `category_group_slug`
 
-### 15. Consulte a projeção do calendário
+Exemplo de filtro para mostrar apenas budgets ativos:
+
+```bash
+curl -X GET "$BASE_URL/api/v1/budgets?status=active" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Exemplo de filtro por mês:
+
+```bash
+curl -X GET "$BASE_URL/api/v1/budgets?year=2026&month=3" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### 15. Clone um budget do mês anterior
+
+Use isso para reaproveitar o mesmo budget como base histórica, alterando apenas o que mudou no novo período.
+
+```bash
+export TRANSPORT_BUDGET_ID="coloque-aqui-o-id-do-budget-anterior"
+
+curl -X POST "$BASE_URL/api/v1/budgets/$TRANSPORT_BUDGET_ID/clone" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Transportation April",
+    "amount": "70.00",
+    "period_start": "2026-04-01",
+    "period_end": "2026-04-30"
+  }'
+```
+
+### 16. Entenda o status do budget
+
+O status não é salvo manualmente no banco. Ele é calculado a partir de `period_start`, `period_end` e da data atual:
+
+- `upcoming`: o período ainda não começou
+- `active`: a data atual está dentro do período
+- `archived`: o período já terminou
+
+### 17. Consulte a projeção do calendário
 
 Exemplo para ver o impacto das recorrências em uma conta específica.
 

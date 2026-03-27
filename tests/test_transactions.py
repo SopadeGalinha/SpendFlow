@@ -192,34 +192,6 @@ def test_create_adjustment_entry(
     assert updated_account.balance == Decimal("975.00")
 
 
-def test_create_income_legacy_alias(
-    client, test_user, test_user_object, session, event_loop
-):
-    account = event_loop.run_until_complete(
-        _create_account(session, test_user_object.id)
-    )
-    salary_category_id = _get_category_id(
-        client,
-        test_user,
-        "salary",
-        "income",
-    )
-
-    response = client.post(
-        "/api/v1/transactions/incomes",
-        headers={"Authorization": f"Bearer {test_user}"},
-        json={
-            "description": "Legacy salary",
-            "amount": "250.00",
-            "transaction_date": "2026-03-25",
-            "account_id": str(account.id),
-            "category_id": salary_category_id,
-        },
-    )
-    assert response.status_code == status.HTTP_201_CREATED
-    assert response.json()["type"] == "income"
-
-
 def test_cannot_create_transaction_on_other_user_account(
     client, test_user, session, event_loop
 ):

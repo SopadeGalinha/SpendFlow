@@ -19,10 +19,6 @@ class TransactionCreate(TransactionBase):
     type: TransactionType
 
 
-class LegacyTransactionCreate(TransactionBase):
-    pass
-
-
 class TransactionUpdate(BaseModel):
     description: str | None = Field(default=None, min_length=1, max_length=255)
     amount: Decimal | None = Field(default=None, gt=0)

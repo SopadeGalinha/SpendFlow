@@ -9,7 +9,6 @@ from src.api.v1.deps import get_current_user
 from src.database import get_session
 from src.models import TransactionType, User
 from src.schemas import (
-    LegacyTransactionCreate,
     TransactionAdjustmentCreate,
     TransactionCreate,
     TransactionResponse,
@@ -75,61 +74,6 @@ async def create_transfer(
         transaction_date=transfer_in.transaction_date,
         from_entry=from_entry,
         to_entry=to_entry,
-    )
-
-
-async def _create_legacy_transaction(
-    db: AsyncSession,
-    user_id: UUID,
-    transaction_in: LegacyTransactionCreate,
-    transaction_type: TransactionType,
-):
-    payload = TransactionCreate(
-        **transaction_in.model_dump(),
-        type=transaction_type,
-    )
-    return await TransactionService.create_transaction(
-        db,
-        user_id,
-        payload,
-    )
-
-
-@router.post(
-    "/incomes",
-    response_model=TransactionResponse,
-    status_code=status.HTTP_201_CREATED,
-    deprecated=True,
-)
-async def create_income_legacy(
-    transaction_in: LegacyTransactionCreate,
-    db: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-):
-    return await _create_legacy_transaction(
-        db,
-        current_user.id,
-        transaction_in,
-        TransactionType.INCOME,
-    )
-
-
-@router.post(
-    "/expenses",
-    response_model=TransactionResponse,
-    status_code=status.HTTP_201_CREATED,
-    deprecated=True,
-)
-async def create_expense_legacy(
-    transaction_in: LegacyTransactionCreate,
-    db: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-):
-    return await _create_legacy_transaction(
-        db,
-        current_user.id,
-        transaction_in,
-        TransactionType.EXPENSE,
     )
 
 

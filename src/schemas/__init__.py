@@ -19,7 +19,6 @@ from .recurring import (
     RecurringRuleUpdate,
 )
 from .transaction import (
-    LegacyTransactionCreate,
     TransactionAdjustmentCreate,
     TransactionCreate,
     TransactionResponse,
@@ -55,7 +54,6 @@ __all__ = [
     "CategoryCreate",
     "CategoryResponse",
     "CategoryCatalogGroupResponse",
-    "LegacyTransactionCreate",
     "TransactionAdjustmentCreate",
     "TransferCreate",
     "TransferResponse",
