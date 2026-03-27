@@ -1,6 +1,6 @@
 # SpendFlow API
 
-![SpendFlow Architecture](docs/ARCHITECTURE.md)
+[SpendFlow Architecture](docs/ARCHITECTURE.md)
 
 ## Overview
 SpendFlow is a modern, secure, and extensible financial management API designed for SaaS and personal finance applications. It provides robust user authentication, account management, recurring transaction projections, and soft-deletion for safe data handling. The backend is built with FastAPI, SQLModel, and async SQLAlchemy, following best practices for security, maintainability, and scalability.
