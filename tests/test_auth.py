@@ -359,3 +359,96 @@ def test_login_empty_password(client):
         status.HTTP_422_UNPROCESSABLE_CONTENT,
         status.HTTP_401_UNAUTHORIZED,
     ]
+
+
+def test_me_returns_authenticated_user(client, test_user, test_user_object):
+    """Authenticated profile endpoint should return the current user."""
+    response = client.get(
+        "/api/v1/auth/me",
+        headers={"Authorization": f"Bearer {test_user}"},
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert data["id"] == str(test_user_object.id)
+    assert data["username"] == test_user_object.username
+    assert data["email"] == test_user_object.email
+    assert "hashed_password" not in data
+
+
+def test_me_requires_valid_token(client):
+    """Profile endpoint should reject missing credentials."""
+    response = client.get("/api/v1/auth/me")
+
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+def test_preferences_returns_defaults_for_authenticated_user(client, test_user):
+    """Authenticated users receive default UI preferences when none are saved."""
+    response = client.get(
+        "/api/v1/auth/preferences",
+        headers={"Authorization": f"Bearer {test_user}"},
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert data == {
+        "dashboard": {
+            "order": [
+                "metrics",
+                "evolution",
+                "accounts_savings",
+                "budgets_recurring",
+                "calendar",
+                "transactions",
+            ],
+            "hidden": [],
+        },
+        "budget": {"view_mode": "category"},
+    }
+
+
+def test_preferences_can_update_and_merge_sections(client, test_user):
+    """Preference updates should persist and merge partial updates safely."""
+    first_update = client.put(
+        "/api/v1/auth/preferences",
+        headers={"Authorization": f"Bearer {test_user}"},
+        json={
+            "dashboard": {
+                "order": ["transactions", "metrics"],
+                "hidden": ["calendar"],
+            }
+        },
+    )
+
+    assert first_update.status_code == status.HTTP_200_OK
+    first_data = first_update.json()
+    assert first_data["dashboard"]["order"][0:2] == ["transactions", "metrics"]
+    assert first_data["dashboard"]["hidden"] == ["calendar"]
+    assert first_data["budget"] == {"view_mode": "category"}
+
+    second_update = client.put(
+        "/api/v1/auth/preferences",
+        headers={"Authorization": f"Bearer {test_user}"},
+        json={"budget": {"view_mode": "flex"}},
+    )
+
+    assert second_update.status_code == status.HTTP_200_OK
+    second_data = second_update.json()
+    assert second_data["budget"] == {"view_mode": "flex"}
+    assert second_data["dashboard"]["hidden"] == ["calendar"]
+
+    fetched = client.get(
+        "/api/v1/auth/preferences",
+        headers={"Authorization": f"Bearer {test_user}"},
+    )
+    assert fetched.status_code == status.HTTP_200_OK
+    fetched_data = fetched.json()
+    assert fetched_data["budget"] == {"view_mode": "flex"}
+    assert fetched_data["dashboard"]["hidden"] == ["calendar"]
+
+
+def test_preferences_require_valid_token(client):
+    """Preferences endpoint should reject requests without credentials."""
+    response = client.get("/api/v1/auth/preferences")
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED

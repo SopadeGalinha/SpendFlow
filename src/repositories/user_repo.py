@@ -36,3 +36,9 @@ class UserRepository:
         db.add(user)
         await db.flush()
         return user
+
+    @staticmethod
+    async def save(db: AsyncSession, user: User) -> User:
+        db.add(user)
+        await db.flush()
+        return user

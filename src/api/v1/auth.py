@@ -2,8 +2,16 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.api.v1.deps import get_current_user
 from src.database import get_session
-from src.schemas import Token, UserCreate, UserResponse
+from src.schemas import (
+    Token,
+    UserCreate,
+    UserPreferencesResponse,
+    UserPreferencesUpdate,
+    UserResponse,
+)
+from src.models import User
 from src.services import AuthService
 
 router = APIRouter()
@@ -59,3 +67,29 @@ async def login(
         )
     access_token = AuthService.create_access_token(user.id)
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+@router.get("/me", response_model=UserResponse)
+async def get_me(current_user: User = Depends(get_current_user)):
+    """Return the authenticated user profile."""
+    return current_user
+
+
+@router.get("/preferences", response_model=UserPreferencesResponse)
+async def get_preferences(current_user: User = Depends(get_current_user)):
+    """Return persisted web UI preferences for the authenticated user."""
+    return AuthService.get_user_preferences(current_user)
+
+
+@router.put("/preferences", response_model=UserPreferencesResponse)
+async def update_preferences(
+    preferences_in: UserPreferencesUpdate,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """Update persisted web UI preferences for the authenticated user."""
+    return await AuthService.update_user_preferences(
+        db,
+        current_user,
+        preferences_in,
+    )

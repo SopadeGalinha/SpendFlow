@@ -13,6 +13,13 @@ def add_cors_middleware(app: FastAPI) -> None:
     cors_origins = (
         settings.CORS_ORIGINS.split(",") if settings.CORS_ORIGINS else []
     )
+
+    # In debug, provide sensible defaults for local dev frontends if not set.
+    if settings.DEBUG and not cors_origins:
+        cors_origins = [
+            "http://localhost:3000",  # Next.js dev
+            "http://localhost:4200",  # Angular dev
+        ]
     if not cors_origins and not settings.DEBUG:
         logger = logging.getLogger(__name__)
         logger.warning(

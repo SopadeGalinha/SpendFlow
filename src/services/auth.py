@@ -14,7 +14,7 @@ from src.core.security import (
 )
 from src.models import User
 from src.repositories import UserRepository
-from src.schemas import UserCreate
+from src.schemas import UserCreate, UserPreferencesResponse, UserPreferencesUpdate
 
 logger = logging.getLogger(__name__)
 
@@ -116,3 +116,44 @@ class AuthService:
             subject=str(user_id),
             expires_delta=expires_delta,
         )
+
+    @staticmethod
+    def get_user_preferences(user: User) -> UserPreferencesResponse:
+        raw_preferences = (
+            user.ui_preferences
+            if isinstance(user.ui_preferences, dict)
+            else {}
+        )
+
+        try:
+            return UserPreferencesResponse.model_validate(raw_preferences)
+        except Exception:
+            # If persisted preferences become invalid for any reason,
+            # fall back to safe defaults instead of blocking the user.
+            return UserPreferencesResponse()
+
+    @staticmethod
+    async def update_user_preferences(
+        db: AsyncSession,
+        user: User,
+        preferences_update: UserPreferencesUpdate,
+    ) -> UserPreferencesResponse:
+        preferences = AuthService.get_user_preferences(user)
+
+        dashboard_update = preferences_update.dashboard
+        if dashboard_update is not None:
+            if dashboard_update.order is not None:
+                preferences.dashboard.order = dashboard_update.order
+            if dashboard_update.hidden is not None:
+                preferences.dashboard.hidden = dashboard_update.hidden
+
+        budget_update = preferences_update.budget
+        if budget_update is not None and budget_update.view_mode is not None:
+            preferences.budget.view_mode = budget_update.view_mode
+
+        user.ui_preferences = preferences.model_dump(mode="json")
+        await UserRepository.save(db, user)
+        await db.commit()
+        await db.refresh(user)
+
+        return preferences

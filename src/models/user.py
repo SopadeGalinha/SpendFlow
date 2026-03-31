@@ -1,7 +1,8 @@
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
+from sqlalchemy import JSON
 from sqlmodel import (
     Column,
     DateTime,
@@ -40,6 +41,11 @@ class User(SQLModel, table=True):
     currency: str = Field(
         default="EUR",
         description="Primary currency for display",
+    )
+    ui_preferences: dict[str, Any] | None = Field(
+        default=None,
+        sa_column=Column(JSON, nullable=True),
+        description="Optional per-user UI preferences for web experience",
     )
 
     default_weekend_adjustment: WeekendAdjustment = Field(

@@ -124,11 +124,11 @@ def upgrade() -> None:
     )
 
     op.execute(
-        'CREATE UNIQUE INDEX IF NOT EXISTS uq_user_email_lower '
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_user_email_lower "
         'ON "user" (lower(email))'
     )
     op.execute(
-        'CREATE UNIQUE INDEX IF NOT EXISTS uq_user_username_lower '
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_user_username_lower "
         'ON "user" (lower(username))'
     )
 
@@ -170,7 +170,11 @@ def upgrade() -> None:
             name="ck_budgets_single_scope_target",
         ),
     )
-    op.create_index("ix_budgets_category_group_id", "budgets", ["category_group_id"])
+    op.create_index(
+        "ix_budgets_category_group_id",
+        "budgets",
+        ["category_group_id"],
+    )
     op.create_index("ix_budgets_category_id", "budgets", ["category_id"])
     op.create_index("ix_budgets_user_id", "budgets", ["user_id"])
 
@@ -181,8 +185,8 @@ def downgrade() -> None:
     op.drop_index("ix_budgets_category_group_id", table_name="budgets")
     op.drop_table("budgets")
 
-    op.execute('DROP INDEX IF EXISTS uq_user_username_lower')
-    op.execute('DROP INDEX IF EXISTS uq_user_email_lower')
+    op.execute("DROP INDEX IF EXISTS uq_user_username_lower")
+    op.execute("DROP INDEX IF EXISTS uq_user_email_lower")
 
     op.drop_constraint(
         "uq_categories_group_slug",

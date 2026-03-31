@@ -13,6 +13,14 @@ from .category import (
     CategoryResponse,
 )
 from .finance import ProjectionResponse
+from .preferences import (
+    BudgetPreferences,
+    BudgetPreferencesUpdate,
+    DashboardPreferences,
+    DashboardPreferencesUpdate,
+    UserPreferencesResponse,
+    UserPreferencesUpdate,
+)
 from .recurring import (
     RecurringRuleCreate,
     RecurringRuleResponse,
@@ -35,6 +43,12 @@ from .user import (
 
 __all__ = [
     "ProjectionResponse",
+    "DashboardPreferences",
+    "DashboardPreferencesUpdate",
+    "BudgetPreferences",
+    "BudgetPreferencesUpdate",
+    "UserPreferencesResponse",
+    "UserPreferencesUpdate",
     "RecurringRuleCreate",
     "RecurringRuleUpdate",
     "RecurringRuleResponse",
